@@ -1,0 +1,134 @@
+<?php
+require_once 'includes/db.php';
+require_once 'includes/auth.php';
+
+requireLogin();
+
+$error = '';
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? null)) {
+        $error = 'Requête invalide.';
+    } else {
+        $title = trim($_POST['title'] ?? '');
+        $platform = trim($_POST['platform'] ?? '');
+        $genre = trim($_POST['genre'] ?? '');
+        $releaseYear = $_POST['release_year'] !== '' ? (int)$_POST['release_year'] : null;
+        $publisher = trim($_POST['publisher'] ?? '');
+        $globalSales = $_POST['global_sales'] !== '' ? $_POST['global_sales'] : null;
+        $criticScore = $_POST['critic_score'] !== '' ? $_POST['critic_score'] : null;
+        $userScore = $_POST['user_score'] !== '' ? $_POST['user_score'] : null;
+        $sourceUrl = trim($_POST['source_url'] ?? '');
+        $message = trim($_POST['message'] ?? '');
+        $userId = $_SESSION['user']['id'];
+
+        if ($title === '') {
+            $error = 'Le titre du jeu est obligatoire.';
+        } elseif ($releaseYear !== null && ($releaseYear < 1950 || $releaseYear > (int)date('Y') + 5)) {
+            $error = 'L’année de sortie semble invalide.';
+        } elseif ($sourceUrl !== '' && !filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+            $error = 'Le lien source est invalide.';
+        } else {
+            $stmt = $pdo->prepare(
+                'INSERT INTO tickets
+                 (user_id, title, platform, genre, release_year, publisher, global_sales, critic_score, user_score, source_url, message)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+
+            $stmt->execute([
+                $userId,
+                $title,
+                $platform,
+                $genre,
+                $releaseYear,
+                $publisher,
+                $globalSales,
+                $criticScore,
+                $userScore,
+                $sourceUrl,
+                $message
+            ]);
+
+            $success = 'Demande envoyée avec succès.';
+        }
+    }
+}
+
+include 'includes/header.php';
+?>
+
+<section class="section">
+    <div class="container">
+        <h1 class="section-title">Demander l’ajout d’un jeu</h1>
+
+        <div class="info-box">
+            <?php if ($error): ?>
+                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <?php endif; ?>
+
+            <form action="ticket_create.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+
+                <div class="form-group">
+                    <label for="title">Titre du jeu *</label>
+                    <input type="text" id="title" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="platform">Plateforme</label>
+                    <input type="text" id="platform" name="platform" placeholder="Ex : PC, PS5, Switch" value="<?= htmlspecialchars($_POST['platform'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="genre">Genre</label>
+                    <input type="text" id="genre" name="genre" placeholder="Ex : RPG, Action, Sport" value="<?= htmlspecialchars($_POST['genre'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="release_year">Année de sortie</label>
+                    <input type="number" id="release_year" name="release_year" placeholder="Ex : 2024" value="<?= htmlspecialchars($_POST['release_year'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="publisher">Éditeur</label>
+                    <input type="text" id="publisher" name="publisher" placeholder="Ex : Nintendo, Ubisoft, Rockstar..." value="<?= htmlspecialchars($_POST['publisher'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="global_sales">Ventes mondiales estimées</label>
+                    <input type="number" step="0.01" id="global_sales" name="global_sales" placeholder="Ex : 12.50" value="<?= htmlspecialchars($_POST['global_sales'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="critic_score">Score critique estimé</label>
+                    <input type="number" step="0.1" min="0" max="10" id="critic_score" name="critic_score" placeholder="Ex : 8.7" value="<?= htmlspecialchars($_POST['critic_score'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="user_score">Score utilisateur estimé</label>
+                    <input type="number" step="0.1" min="0" max="10" id="user_score" name="user_score" placeholder="Ex : 9.1" value="<?= htmlspecialchars($_POST['user_score'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="source_url">Lien source</label>
+                    <input type="url" id="source_url" name="source_url" placeholder="Ex : page officielle, Wikipédia, Metacritic..." value="<?= htmlspecialchars($_POST['source_url'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message complémentaire</label>
+                    <textarea id="message" name="message" placeholder="Pourquoi ce jeu devrait être ajouté ?"><?= htmlspecialchars($_POST['message'] ?? '') ?></textarea>
+                </div>
+
+                <button class="btn" type="submit">Envoyer la demande</button>
+                <a href="tickets.php" class="btn btn-secondary">Mes tickets</a>
+            </form>
+        </div>
+    </div>
+</section>
+
+<?php include 'includes/footer.php'; ?>
