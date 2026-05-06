@@ -50,18 +50,95 @@ if (isLoggedIn()) {
 include 'includes/header.php';
 ?>
 
-<section class="section">
+<section class="game-hero">
     <div class="container">
-        <h1 class="section-title"><?= htmlspecialchars($game['title']) ?></h1>
+        <div class="game-hero-card">
+            <div class="game-hero-image-wrap">
+                <?php if (!empty($game['image_url'])): ?>
+                    <img
+                        src="<?= htmlspecialchars($game['image_url']) ?>"
+                        alt="<?= htmlspecialchars($game['title']) ?>"
+                        class="game-hero-image"
+                    >
+                <?php else: ?>
+                    <div class="game-hero-placeholder">🎮</div>
+                <?php endif; ?>
+            </div>
 
-        <?php if (!empty($game['image_url'])): ?>
-            <img
-                src="<?= htmlspecialchars($game['image_url']) ?>"
-                alt="<?= htmlspecialchars($game['title']) ?>"
-                class="game-detail-image"
-            >
-        <?php endif; ?>
+            <div class="game-hero-content">
+                <span class="eyebrow">Fiche jeu</span>
 
+                <h1><?= htmlspecialchars($game['title']) ?></h1>
+
+                <div class="game-hero-badges">
+                    <span class="badge"><?= !empty($game['genre']) ? htmlspecialchars($game['genre']) : 'Genre inconnu' ?></span>
+                    <span class="badge"><?= !empty($game['platform']) ? htmlspecialchars($game['platform']) : 'Plateforme inconnue' ?></span>
+
+                    <?php if (!empty($game['release_year'])): ?>
+                        <span class="badge"><?= htmlspecialchars($game['release_year']) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <p>
+                    Consulte les informations principales du jeu, ses scores,
+                    ses ventes et les avis laissés par la communauté GameStats.
+                </p>
+
+                <div class="game-hero-stats">
+                    <div>
+                        <strong id="heroAverageRating">
+                            <?= $averageRating !== null ? htmlspecialchars($averageRating) . '/5' : '—' ?>
+                        </strong>
+                        <span>Note communauté</span>
+                    </div>
+
+                    <div>
+                        <strong id="heroReviewCount"><?= htmlspecialchars($reviewCount) ?></strong>
+                        <span>Avis utilisateur(s)</span>
+                    </div>
+
+                    <div>
+                        <strong id="heroCriticScore">
+                            <?= $game['critic_score'] !== null && $game['critic_score'] !== ''
+                                ? htmlspecialchars($game['critic_score'])
+                                : '—' ?>
+                        </strong>
+                        <span>Score critique</span>
+                    </div>
+                </div>
+
+                <?php if (isLoggedIn()): ?>
+                    <form
+                        action="<?= $isFavorite ? 'remove_favorite.php' : 'add_favorite.php' ?>"
+                        method="POST"
+                        class="favorite-form"
+                        data-add-action="add_favorite.php"
+                        data-remove-action="remove_favorite.php"
+                    >
+                        <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                        <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
+                        <input type="hidden" name="return" value="game.php?id=<?= $game['id'] ?>">
+
+                        <button
+                            class="btn <?= $isFavorite ? 'btn-danger' : '' ?>"
+                            type="submit"
+                            data-favorite-button
+                        >
+                            <?= $isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris' ?>
+                        </button>
+
+                        <p class="form-help favorite-message" data-favorite-message></p>
+                    </form>
+                <?php else: ?>
+                    <a href="login.php" class="btn">Connecte-toi pour ajouter aux favoris</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section game-detail-section">
+    <div class="container">
         <div class="details-layout">
             <div class="info-box">
                 <h2>Description</h2>
@@ -72,44 +149,48 @@ include 'includes/header.php';
 
                 <h2>Avis utilisateurs</h2>
 
-                <?php if (empty($reviews)): ?>
-                    <article class="card">
-                        <h3>Aucun avis pour le moment</h3>
-                        <p>Sois le premier à laisser une note et un commentaire.</p>
-                    </article>
-                <?php else: ?>
-                    <?php foreach ($reviews as $review): ?>
-                        <article class="card">
-                            <h3><?= htmlspecialchars($review['username']) ?></h3>
-
-                            <div class="review-stars">
-                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                    <?= $i <= (int)$review['rating'] ? '⭐' : '☆' ?>
-                                <?php endfor; ?>
-                            </div>
-
-                            <p>Note : <?= htmlspecialchars($review['rating']) ?>/5</p>
-
-                            <?php if (!empty($review['comment'])): ?>
-                                <p><?= nl2br(htmlspecialchars($review['comment'])) ?></p>
-                            <?php endif; ?>
-
-                            <?php if (isLoggedIn() && $_SESSION['user']['id'] == $review['user_id']): ?>
-                                <form action="delete_review.php" method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-                                    <input type="hidden" name="review_id" value="<?= $review['id'] ?>">
-                                    <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
-                                    <button class="btn btn-danger" type="submit">Supprimer mon avis</button>
-                                </form>
-                            <?php endif; ?>
+                <div id="reviewsList">
+                    <?php if (empty($reviews)): ?>
+                        <article class="card" id="noReviewsMessage">
+                            <h3>Aucun avis pour le moment</h3>
+                            <p>Sois le premier à laisser une note et un commentaire.</p>
                         </article>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                    <?php else: ?>
+                        <?php foreach ($reviews as $review): ?>
+                            <article class="card review-card" data-review-id="<?= $review['id'] ?>">
+                                <h3><?= htmlspecialchars($review['username']) ?></h3>
+
+                                <div class="review-stars">
+                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                        <?= $i <= (int)$review['rating'] ? '⭐' : '☆' ?>
+                                    <?php endfor; ?>
+                                </div>
+
+                                <p>Note : <?= htmlspecialchars($review['rating']) ?>/5</p>
+
+                                <?php if (!empty($review['comment'])): ?>
+                                    <p><?= nl2br(htmlspecialchars($review['comment'])) ?></p>
+                                <?php endif; ?>
+
+                                <?php if (isLoggedIn() && $_SESSION['user']['id'] == $review['user_id']): ?>
+                                    <form action="delete_review.php" method="POST" class="delete-review-form">
+                                        <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                        <input type="hidden" name="review_id" value="<?= $review['id'] ?>">
+                                        <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
+                                        <button class="btn btn-danger" type="submit">Supprimer mon avis</button>
+                                    </form>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
 
                 <?php if (isLoggedIn()): ?>
-                    <form action="add_review.php" method="POST">
+                    <form action="add_review.php" method="POST" id="reviewForm" class="review-form-premium">
                         <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                         <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
+
+                        <h2>Ajouter mon avis</h2>
 
                         <div class="form-group">
                             <label for="rating">Note</label>
@@ -127,30 +208,32 @@ include 'includes/header.php';
                             <textarea id="comment" name="comment" placeholder="Ton avis sur ce jeu..."></textarea>
                         </div>
 
-                        <button class="btn" type="submit">Ajouter un avis</button>
+                        <button class="btn" type="submit" data-review-submit>Ajouter un avis</button>
+                        <p class="form-help" id="reviewMessage"></p>
                     </form>
                 <?php else: ?>
                     <a href="login.php" class="btn">Connecte-toi pour laisser un avis</a>
                 <?php endif; ?>
             </div>
 
-            <aside class="info-box">
+            <aside class="info-box game-side-panel">
                 <h2>Informations</h2>
 
-                <div class="rating-box">
+                <div class="rating-box" id="ratingBox">
                     <?php if ($averageRating !== null): ?>
-                        <div class="rating-stars">
+                        <div class="rating-stars" id="averageStars">
                             <?php for ($i = 1; $i <= 5; $i++): ?>
                                 <?= $i <= round($averageRating) ? '⭐' : '☆' ?>
                             <?php endfor; ?>
                         </div>
 
-                        <p>
+                        <p id="averageText">
                             <strong><?= htmlspecialchars($averageRating) ?>/5</strong>
                             sur <?= htmlspecialchars($reviewCount) ?> avis
                         </p>
                     <?php else: ?>
-                        <p>Aucune note utilisateur pour le moment.</p>
+                        <div class="rating-stars" id="averageStars"></div>
+                        <p id="averageText">Aucune note utilisateur pour le moment.</p>
                     <?php endif; ?>
                 </div>
 
@@ -163,26 +246,6 @@ include 'includes/header.php';
                     <li><strong>Score critique :</strong> <?= $game['critic_score'] !== null && $game['critic_score'] !== '' ? htmlspecialchars($game['critic_score']) : 'Non renseigné' ?></li>
                     <li><strong>Score utilisateur :</strong> <?= $game['user_score'] !== null && $game['user_score'] !== '' ? htmlspecialchars($game['user_score']) : 'Non renseigné' ?></li>
                 </ul>
-
-                <?php if (isLoggedIn()): ?>
-                    <?php if ($isFavorite): ?>
-                        <form action="remove_favorite.php" method="POST">
-                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-                            <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
-                            <input type="hidden" name="return" value="game.php?id=<?= $game['id'] ?>">
-                            <button class="btn btn-danger" type="submit">Retirer des favoris</button>
-                        </form>
-                    <?php else: ?>
-                        <form action="add_favorite.php" method="POST">
-                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-                            <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
-                            <input type="hidden" name="return" value="game.php?id=<?= $game['id'] ?>">
-                            <button class="btn" type="submit">Ajouter aux favoris</button>
-                        </form>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <a href="login.php" class="btn">Connecte-toi pour ajouter aux favoris</a>
-                <?php endif; ?>
 
                 <a href="games.php" class="btn btn-secondary">Retour au catalogue</a>
             </aside>

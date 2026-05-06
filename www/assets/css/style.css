@@ -1310,3 +1310,246 @@ body:has(.home-screen) .site-footer {
     margin: 1rem 0;
     border: 1px solid var(--border);
 }
+
+/* PAGE DETAIL JEU PREMIUM */
+
+.game-hero {
+    padding: 3.5rem 0 2rem;
+}
+
+.game-hero-card {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 2rem;
+    align-items: stretch;
+    padding: 1.4rem;
+    border-radius: 34px;
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
+    overflow: hidden;
+    position: relative;
+}
+
+.game-hero-card::before {
+    content: "";
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    right: -130px;
+    top: -130px;
+    background: radial-gradient(circle, rgba(139,92,246,0.28), transparent 70%);
+    pointer-events: none;
+}
+
+.game-hero-image-wrap {
+    position: relative;
+    min-height: 360px;
+    border-radius: 28px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+}
+
+.game-hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+
+.game-hero-card:hover .game-hero-image {
+    transform: scale(1.04);
+}
+
+.game-hero-placeholder {
+    width: 100%;
+    height: 100%;
+    min-height: 360px;
+    display: grid;
+    place-items: center;
+    font-size: 5rem;
+}
+
+.game-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.game-hero-content h1 {
+    font-size: clamp(2.6rem, 5vw, 5rem);
+    line-height: 0.95;
+    letter-spacing: -3px;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #ffffff, #c4b5fd, #67e8f9);
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.game-hero-content p {
+    color: var(--muted);
+    max-width: 640px;
+    margin-bottom: 1.4rem;
+}
+
+.game-hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+}
+
+.game-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1rem 0 1.4rem;
+}
+
+.game-hero-stats div {
+    padding: 1rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+}
+
+.game-hero-stats strong {
+    display: block;
+    font-size: 1.45rem;
+    color: white;
+}
+
+.game-hero-stats span {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.game-detail-section {
+    padding-top: 2rem;
+}
+
+.game-side-panel {
+    position: sticky;
+    top: 100px;
+}
+
+.review-form-premium {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.review-card {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 1000px) {
+    .game-hero-card {
+        grid-template-columns: 1fr;
+    }
+
+    .game-hero-image-wrap {
+        min-height: 320px;
+    }
+
+    .game-side-panel {
+        position: static;
+    }
+}
+
+@media (max-width: 600px) {
+    .game-hero {
+        padding-top: 2rem;
+    }
+
+    .game-hero-card {
+        padding: 1rem;
+        border-radius: 26px;
+    }
+
+    .game-hero-content {
+        padding: 0.5rem;
+    }
+
+    .game-hero-content h1 {
+        font-size: 3rem;
+        letter-spacing: -2px;
+    }
+
+    .game-hero-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .game-hero-image-wrap {
+        min-height: 240px;
+    }
+}
+
+/* TOAST NOTIFICATIONS */
+
+.toast-container {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    display: grid;
+    gap: 0.8rem;
+    z-index: 999;
+}
+
+.toast {
+    min-width: 260px;
+    max-width: 360px;
+    padding: 1rem 1.2rem;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid var(--border);
+    color: white;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    font-weight: 800;
+    animation: toastIn 0.35s ease both;
+}
+
+.toast-success {
+    border-color: rgba(34,197,94,0.45);
+    color: #bbf7d0;
+}
+
+.toast-error {
+    border-color: rgba(239,68,68,0.45);
+    color: #fecaca;
+}
+
+.toast-hide {
+    animation: toastOut 0.35s ease both;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+    }
+}
