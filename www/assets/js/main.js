@@ -1,6 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-
-    // ===== TOAST NOTIFICATIONS =====
     function showToast(message, type = "success") {
         let container = document.querySelector(".toast-container");
 
@@ -16,16 +14,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         container.appendChild(toast);
 
-        setTimeout(() => {
-            toast.classList.add("toast-hide");
-        }, 2600);
-
-        setTimeout(() => {
-            toast.remove();
-        }, 3100);
+        setTimeout(() => toast.classList.add("toast-hide"), 2600);
+        setTimeout(() => toast.remove(), 3100);
     }
 
-    // ===== MENU MOBILE =====
     const menuToggle = document.getElementById("menuToggle");
     const mainNav = document.getElementById("mainNav");
 
@@ -35,20 +27,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ===== ALERTES AUTO DISPARITION PREMIUM =====
-    const alerts = document.querySelectorAll(".alert");
-
-    alerts.forEach((alert) => {
-        setTimeout(() => {
-            alert.classList.add("alert-hide");
-        }, 3500);
-
-        setTimeout(() => {
-            alert.remove();
-        }, 4300);
+    document.querySelectorAll(".alert").forEach((alert) => {
+        setTimeout(() => alert.classList.add("alert-hide"), 3500);
+        setTimeout(() => alert.remove(), 4300);
     });
 
-    // ===== NOM FICHIER AVATAR =====
     const avatarInput = document.getElementById("avatar");
     const fileName = document.getElementById("fileName");
 
@@ -60,74 +43,187 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ===== FAVORIS SANS RECHARGEMENT =====
-    const favoriteForms = document.querySelectorAll(".favorite-form");
+    function bindFavoriteForms(scope = document) {
+        scope.querySelectorAll(".favorite-form").forEach((form) => {
+            if (form.dataset.bound === "true") return;
+            form.dataset.bound = "true";
 
-    favoriteForms.forEach((form) => {
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
 
-            const button = form.querySelector("[data-favorite-button]");
-            const message = form.querySelector("[data-favorite-message]");
-            const formData = new FormData(form);
+                const button = form.querySelector("[data-favorite-button]");
+                const message = form.querySelector("[data-favorite-message]");
+                const formData = new FormData(form);
 
-            button.disabled = true;
+                if (!button) return;
 
-            if (message) {
-                message.textContent = "Mise à jour...";
-            }
+                const isCatalogButton = !!form.closest(".catalog-card");
 
-            try {
-                const response = await fetch(form.action, {
-                    method: "POST",
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest"
-                    },
-                    body: formData
-                });
+                button.disabled = true;
+                if (message) message.textContent = "Mise à jour...";
 
-                const data = await response.json();
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: formData
+                    });
 
-                if (!data.success) {
-                    showToast(data.message || "Une erreur est survenue.", "error");
+                    const data = await response.json();
 
-                    if (message) {
-                        message.textContent = "";
+                    if (!data.success) {
+                        showToast(data.message || "Une erreur est survenue.", "error");
+                        if (message) message.textContent = "";
+                        button.disabled = false;
+                        return;
                     }
 
-                    button.disabled = false;
-                    return;
+                    if (data.is_favorite) {
+                        button.classList.add("btn-danger");
+                        form.action = form.dataset.removeAction;
+                    } else {
+                        button.classList.remove("btn-danger");
+                        form.action = form.dataset.addAction;
+                    }
+
+                    if (isCatalogButton) {
+                        button.textContent = data.is_favorite ? "Retirer" : "Favori";
+                    } else {
+                        button.textContent = data.button_text;
+                    }
+
+                    const catalogCard = form.closest(".catalog-card");
+                    const imageWrap = catalogCard ? catalogCard.querySelector(".catalog-image-wrap") : null;
+                    const existingBadge = catalogCard ? catalogCard.querySelector(".catalog-favorite-badge") : null;
+
+                    if (catalogCard && imageWrap) {
+                        if (data.is_favorite && !existingBadge) {
+                            const badge = document.createElement("span");
+                            badge.className = "favorite-badge catalog-favorite-badge";
+                            badge.textContent = "❤️ Favori";
+                            imageWrap.appendChild(badge);
+                        }
+
+                        if (!data.is_favorite && existingBadge) {
+                            existingBadge.remove();
+                        }
+                    }
+
+                    const favoriteCard = form.closest(".favorite-card");
+
+                    if (favoriteCard && !data.is_favorite) {
+                        favoriteCard.remove();
+
+                        if (document.querySelectorAll(".favorite-card").length === 0) {
+                            const gamesGrid = document.querySelector(".games-grid");
+
+                            if (gamesGrid) {
+                                gamesGrid.outerHTML = `
+                                    <div class="info-box">
+                                        <h2>Aucun favori</h2>
+                                        <p>Tu n’as pas encore ajouté de jeux à tes favoris.</p>
+                                        <a href="games.php" class="btn">Explorer les jeux</a>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }
+
+                    showToast(data.message, "success");
+                    if (message) message.textContent = "";
+
+                } catch (error) {
+                    showToast("Erreur de connexion.", "error");
+                    if (message) message.textContent = "";
                 }
 
-                button.textContent = data.button_text;
+                button.disabled = false;
+            });
+        });
+    }
 
-                if (data.is_favorite) {
-                    button.classList.add("btn-danger");
-                    form.action = form.dataset.removeAction;
-                } else {
-                    button.classList.remove("btn-danger");
-                    form.action = form.dataset.addAction;
+    bindFavoriteForms();
+
+    const catalogFilterForm = document.getElementById("catalogFilterForm");
+    const catalogContent = document.getElementById("catalogContent");
+    const catalogResetButton = document.getElementById("catalogResetButton");
+
+    async function loadCatalog(url, showSuccessToast = true) {
+        if (!catalogContent) {
+            window.location.href = url;
+            return;
+        }
+
+        catalogContent.classList.add("catalog-loading");
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
                 }
+            });
 
-                showToast(data.message, "success");
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const newContent = doc.getElementById("catalogContent");
 
-                if (message) {
-                    message.textContent = "";
-                }
-
-            } catch (error) {
-                showToast("Erreur de connexion.", "error");
-
-                if (message) {
-                    message.textContent = "";
-                }
+            if (!newContent) {
+                throw new Error("Contenu catalogue introuvable.");
             }
 
-            button.disabled = false;
+            catalogContent.innerHTML = newContent.innerHTML;
+            window.history.pushState({}, "", url);
+
+            bindFavoriteForms(catalogContent);
+            bindCardMouseEffect(catalogContent);
+
+            if (showSuccessToast) {
+                showToast("Catalogue mis à jour.", "success");
+            }
+        } catch (error) {
+            showToast("Erreur pendant la recherche.", "error");
+        }
+
+        catalogContent.classList.remove("catalog-loading");
+    }
+
+    if (catalogFilterForm && catalogContent) {
+        catalogFilterForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(catalogFilterForm);
+            const params = new URLSearchParams(formData);
+            const url = `games.php?${params.toString()}`;
+
+            await loadCatalog(url);
         });
+
+        catalogFilterForm.querySelectorAll("select").forEach((select) => {
+            select.addEventListener("change", () => {
+                catalogFilterForm.requestSubmit();
+            });
+        });
+    }
+
+    if (catalogResetButton) {
+        catalogResetButton.addEventListener("click", async (event) => {
+            event.preventDefault();
+
+            if (catalogFilterForm) {
+                catalogFilterForm.reset();
+            }
+
+            await loadCatalog("games.php");
+        });
+    }
+
+    window.addEventListener("popstate", async () => {
+        await loadCatalog(window.location.href, false);
     });
 
-    // ===== AVIS SANS RECHARGEMENT =====
     const reviewForm = document.getElementById("reviewForm");
     const reviewsList = document.getElementById("reviewsList");
     const reviewMessage = document.getElementById("reviewMessage");
@@ -184,7 +280,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (!data.success) {
                     showToast(data.message || "Impossible de supprimer l’avis.", "error");
-
                     button.textContent = "Supprimer mon avis";
                     button.disabled = false;
                     return;
@@ -195,12 +290,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 updateAverageRating(data.average_rating, data.review_count);
-
                 showToast(data.message, "success");
 
-                if (reviewMessage) {
-                    reviewMessage.textContent = "";
-                }
+                if (reviewMessage) reviewMessage.textContent = "";
 
                 if (data.review_count === 0 && reviewsList) {
                     reviewsList.innerHTML = `
@@ -213,7 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             } catch (error) {
                 showToast("Erreur de connexion.", "error");
-
                 button.textContent = "Supprimer mon avis";
                 button.disabled = false;
             }
@@ -232,10 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const formData = new FormData(reviewForm);
 
             submitButton.disabled = true;
-
-            if (reviewMessage) {
-                reviewMessage.textContent = "Ajout de l’avis...";
-            }
+            if (reviewMessage) reviewMessage.textContent = "Ajout de l’avis...";
 
             try {
                 const response = await fetch(reviewForm.action, {
@@ -250,11 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (!data.success) {
                     showToast(data.message || "Une erreur est survenue.", "error");
-
-                    if (reviewMessage) {
-                        reviewMessage.textContent = "";
-                    }
-
+                    if (reviewMessage) reviewMessage.textContent = "";
                     submitButton.disabled = false;
                     return;
                 }
@@ -266,8 +350,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const review = data.review;
-
                 const article = document.createElement("article");
+
                 article.className = "card review-card";
                 article.dataset.reviewId = review.id;
 
@@ -290,39 +374,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 bindDeleteReviewForm(deleteForm);
 
                 updateAverageRating(data.average_rating, data.review_count);
-
                 reviewForm.reset();
-
                 showToast(data.message, "success");
 
-                if (reviewMessage) {
-                    reviewMessage.textContent = "";
-                }
+                if (reviewMessage) reviewMessage.textContent = "";
 
             } catch (error) {
                 showToast("Erreur de connexion.", "error");
-
-                if (reviewMessage) {
-                    reviewMessage.textContent = "";
-                }
+                if (reviewMessage) reviewMessage.textContent = "";
             }
 
             submitButton.disabled = false;
         });
     }
 
-    // ===== EFFET SOURIS SUR CARTES =====
-    const cards = document.querySelectorAll(".game-card, .card");
+    function bindCardMouseEffect(scope = document) {
+        scope.querySelectorAll(".game-card, .card").forEach((card) => {
+            if (card.dataset.mouseBound === "true") return;
 
-    cards.forEach((card) => {
-        card.addEventListener("mousemove", (event) => {
-            const rect = card.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            card.dataset.mouseBound = "true";
 
-            card.style.setProperty("--mouse-x", `${x}px`);
-            card.style.setProperty("--mouse-y", `${y}px`);
+            card.addEventListener("mousemove", (event) => {
+                const rect = card.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                card.style.setProperty("--mouse-x", `${x}px`);
+                card.style.setProperty("--mouse-y", `${y}px`);
+            });
         });
-    });
+    }
 
+    bindCardMouseEffect();
 });

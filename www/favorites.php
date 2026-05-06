@@ -32,7 +32,19 @@ include 'includes/header.php';
         <?php else: ?>
             <div class="games-grid">
                 <?php foreach ($favorites as $game): ?>
-                    <article class="game-card">
+                    <article class="game-card favorite-card" data-game-id="<?= $game['id'] ?>">
+                        <?php if (!empty($game['image_url'])): ?>
+                            <img
+                                src="<?= htmlspecialchars($game['image_url']) ?>"
+                                alt="<?= htmlspecialchars($game['title']) ?>"
+                                class="game-image"
+                            >
+                        <?php else: ?>
+                            <div class="game-image-placeholder">🎮</div>
+                        <?php endif; ?>
+
+                        <span class="favorite-badge">❤️ Favori</span>
+
                         <h2 class="game-title"><?= htmlspecialchars($game['title']) ?></h2>
 
                         <span class="badge">
@@ -59,12 +71,22 @@ include 'includes/header.php';
 
                         <a href="game.php?id=<?= $game['id'] ?>" class="btn">Voir détails</a>
 
-                        <form action="remove_favorite.php" method="POST">
+                        <form
+                            action="remove_favorite.php"
+                            method="POST"
+                            class="favorite-form favorite-remove-card-form"
+                            data-add-action="add_favorite.php"
+                            data-remove-action="remove_favorite.php"
+                        >
                             <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                             <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
                             <input type="hidden" name="return" value="favorites.php">
 
-                            <button class="btn btn-danger" type="submit">Retirer</button>
+                            <button class="btn btn-danger" type="submit" data-favorite-button>
+                                Retirer
+                            </button>
+
+                            <p class="form-help favorite-message" data-favorite-message></p>
                         </form>
                     </article>
                 <?php endforeach; ?>

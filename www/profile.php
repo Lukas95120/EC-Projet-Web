@@ -73,6 +73,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM favorites WHERE user_id = ?');
+$stmt->execute([$userId]);
+$favoriteCount = (int)$stmt->fetchColumn();
+
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM reviews WHERE user_id = ?');
+$stmt->execute([$userId]);
+$reviewCount = (int)$stmt->fetchColumn();
+
+$stmt = $pdo->prepare('SELECT AVG(rating) FROM reviews WHERE user_id = ?');
+$stmt->execute([$userId]);
+$averageGivenRating = $stmt->fetchColumn();
+$averageGivenRating = $averageGivenRating ? round($averageGivenRating, 1) : null;
+
+$stmt = $pdo->prepare(
+    'SELECT games.*
+     FROM favorites
+     INNER JOIN games ON favorites.game_id = games.id
+     WHERE favorites.user_id = ?
+     ORDER BY favorites.created_at DESC
+     LIMIT 3'
+);
+$stmt->execute([$userId]);
+$latestFavorites = $stmt->fetchAll();
+
+$stmt = $pdo->prepare(
+    'SELECT reviews.*, games.title, games.id AS game_id
+     FROM reviews
+     INNER JOIN games ON reviews.game_id = games.id
+     WHERE reviews.user_id = ?
+     ORDER BY reviews.created_at DESC
+     LIMIT 3'
+);
+$stmt->execute([$userId]);
+$latestReviews = $stmt->fetchAll();
+
 include 'includes/header.php';
 ?>
 
@@ -156,6 +191,80 @@ include 'includes/header.php';
                     <button class="btn" type="submit">Enregistrer</button>
                 </form>
             </div>
+        </div>
+
+        <div class="dashboard-stats" style="margin-top: 2rem;">
+            <article class="stat-card">
+                <span>❤️</span>
+                <h3><?= htmlspecialchars($favoriteCount) ?></h3>
+                <p>Favoris</p>
+            </article>
+
+            <article class="stat-card">
+                <span>⭐</span>
+                <h3><?= htmlspecialchars($reviewCount) ?></h3>
+                <p>Avis publiés</p>
+            </article>
+
+            <article class="stat-card">
+                <span>🎯</span>
+                <h3><?= $averageGivenRating !== null ? htmlspecialchars($averageGivenRating) : '—' ?></h3>
+                <p>Note moyenne donnée</p>
+            </article>
+        </div>
+
+        <div class="dashboard-grid">
+            <article class="info-box">
+                <h2>Derniers favoris</h2>
+
+                <?php if (empty($latestFavorites)): ?>
+                    <p>Aucun favori pour le moment.</p>
+                    <a href="games.php" class="btn">Explorer les jeux</a>
+                <?php else: ?>
+                    <ul class="dashboard-list">
+                        <?php foreach ($latestFavorites as $favorite): ?>
+                            <li>
+                                <strong><?= htmlspecialchars($favorite['title']) ?></strong>
+                                <span>
+                                    <?= !empty($favorite['genre']) ? htmlspecialchars($favorite['genre']) : 'Genre inconnu' ?>
+                                    ·
+                                    <?= !empty($favorite['platform']) ? htmlspecialchars($favorite['platform']) : 'Plateforme inconnue' ?>
+                                </span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+
+                    <a href="favorites.php" class="btn">Voir mes favoris</a>
+                <?php endif; ?>
+            </article>
+
+            <article class="info-box">
+                <h2>Derniers avis</h2>
+
+                <?php if (empty($latestReviews)): ?>
+                    <p>Tu n’as pas encore publié d’avis.</p>
+                    <a href="games.php" class="btn">Découvrir les jeux</a>
+                <?php else: ?>
+                    <ul class="dashboard-list">
+                        <?php foreach ($latestReviews as $review): ?>
+                            <li>
+                                <strong><?= htmlspecialchars($review['title']) ?></strong>
+                                <span><?= htmlspecialchars($review['rating']) ?>/5</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+
+                    <a href="games.php" class="btn">Ajouter d’autres avis</a>
+                <?php endif; ?>
+            </article>
+
+            <article class="info-box">
+                <h2>Activité</h2>
+                <p>
+                    Continue à noter des jeux et à ajouter tes favoris pour enrichir ton profil GameStats.
+                </p>
+                <a href="games.php" class="btn btn-secondary">Retour au catalogue</a>
+            </article>
         </div>
     </div>
 </section>
