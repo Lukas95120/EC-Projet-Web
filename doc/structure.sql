@@ -9,6 +9,7 @@ CREATE TABLE users (
     avatar VARCHAR(255),
     bio TEXT,
     role ENUM('user', 'admin') DEFAULT 'user',
+    is_banned TINYINT(1) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,6 +58,7 @@ CREATE TABLE tickets (
     global_sales DECIMAL(8,2),
     critic_score DECIMAL(4,1),
     user_score DECIMAL(4,1),
+    image_url VARCHAR(255),
     source_url VARCHAR(255),
     message TEXT,
     status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',

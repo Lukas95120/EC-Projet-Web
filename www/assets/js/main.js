@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+
     function showToast(message, type = "success") {
         let container = document.querySelector(".toast-container");
 
@@ -44,8 +45,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function bindFavoriteForms(scope = document) {
-        scope.querySelectorAll(".favorite-form").forEach((form) => {
+        const favoriteForms = scope.querySelectorAll(".favorite-form");
+
+        favoriteForms.forEach((form) => {
             if (form.dataset.bound === "true") return;
+
             form.dataset.bound = "true";
 
             form.addEventListener("submit", async (event) => {
@@ -57,10 +61,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (!button) return;
 
-                const isCatalogButton = !!form.closest(".catalog-card");
+                const isCatalogButton = form.closest(".catalog-card") !== null;
 
                 button.disabled = true;
-                if (message) message.textContent = "Mise à jour...";
+
+                if (message) {
+                    message.textContent = "Mise à jour...";
+                }
 
                 try {
                     const response = await fetch(form.action, {
@@ -80,18 +87,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
+                    button.textContent = isCatalogButton
+                        ? (data.is_favorite ? "Retirer" : "Favori")
+                        : data.button_text;
+
                     if (data.is_favorite) {
                         button.classList.add("btn-danger");
                         form.action = form.dataset.removeAction;
                     } else {
                         button.classList.remove("btn-danger");
                         form.action = form.dataset.addAction;
-                    }
-
-                    if (isCatalogButton) {
-                        button.textContent = data.is_favorite ? "Retirer" : "Favori";
-                    } else {
-                        button.textContent = data.button_text;
                     }
 
                     const catalogCard = form.closest(".catalog-card");
@@ -111,12 +116,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
+                    showToast(data.message, "success");
+
                     const favoriteCard = form.closest(".favorite-card");
 
                     if (favoriteCard && !data.is_favorite) {
                         favoriteCard.remove();
 
-                        if (document.querySelectorAll(".favorite-card").length === 0) {
+                        const remainingFavorites = document.querySelectorAll(".favorite-card");
+
+                        if (remainingFavorites.length === 0) {
                             const gamesGrid = document.querySelector(".games-grid");
 
                             if (gamesGrid) {
@@ -131,8 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
-                    showToast(data.message, "success");
-                    if (message) message.textContent = "";
+                    if (message) {
+                        message.textContent = "";
+                    }
 
                 } catch (error) {
                     showToast("Erreur de connexion.", "error");
@@ -150,13 +160,41 @@ document.addEventListener("DOMContentLoaded", () => {
     const catalogContent = document.getElementById("catalogContent");
     const catalogResetButton = document.getElementById("catalogResetButton");
 
-    async function loadCatalog(url, showSuccessToast = true) {
+    function syncCatalogFiltersWithUrl() {
+        if (!catalogFilterForm) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const fields = ["search", "genre", "platform", "year", "sort"];
+
+        fields.forEach((field) => {
+            const input = catalogFilterForm.querySelector(`[name="${field}"]`);
+
+            if (input) {
+                input.value = params.get(field) || (field === "sort" ? "title_asc" : "");
+            }
+        });
+    }
+
+    async function loadCatalog(url, showSuccessToast = false, updateHistory = true) {
         if (!catalogContent) {
             window.location.href = url;
             return;
         }
 
         catalogContent.classList.add("catalog-loading");
+
+        catalogContent.innerHTML = `
+            <div class="catalog-skeleton-grid">
+                ${Array.from({ length: 6 }).map(() => `
+                    <article class="catalog-skeleton-card">
+                        <div class="catalog-skeleton-image"></div>
+                        <div class="catalog-skeleton-line large"></div>
+                        <div class="catalog-skeleton-line"></div>
+                        <div class="catalog-skeleton-line short"></div>
+                    </article>
+                `).join("")}
+            </div>
+        `;
 
         try {
             const response = await fetch(url, {
@@ -175,14 +213,26 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             catalogContent.innerHTML = newContent.innerHTML;
-            window.history.pushState({}, "", url);
+
+            if (updateHistory) {
+                window.history.pushState({}, "", url);
+                syncCatalogFiltersWithUrl();
+            }
 
             bindFavoriteForms(catalogContent);
+            bindCatalogPagination(catalogContent);
             bindCardMouseEffect(catalogContent);
+
+            const cards = catalogContent.querySelectorAll(".catalog-card");
+
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.05}s`;
+            });
 
             if (showSuccessToast) {
                 showToast("Catalogue mis à jour.", "success");
             }
+
         } catch (error) {
             showToast("Erreur pendant la recherche.", "error");
         }
@@ -191,19 +241,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (catalogFilterForm && catalogContent) {
+        let searchTimeout;
+
+        syncCatalogFiltersWithUrl();
+
+        function submitCatalogFilters(showToastAfterSearch = false) {
+            const formData = new FormData(catalogFilterForm);
+            formData.delete("page");
+
+            const params = new URLSearchParams(formData);
+            const queryString = params.toString();
+            const url = queryString ? `games.php?${queryString}` : "games.php";
+
+            loadCatalog(url, showToastAfterSearch, true);
+        }
+
         catalogFilterForm.addEventListener("submit", async (event) => {
             event.preventDefault();
-
-            const formData = new FormData(catalogFilterForm);
-            const params = new URLSearchParams(formData);
-            const url = `games.php?${params.toString()}`;
-
-            await loadCatalog(url);
+            submitCatalogFilters(true);
         });
 
         catalogFilterForm.querySelectorAll("select").forEach((select) => {
             select.addEventListener("change", () => {
-                catalogFilterForm.requestSubmit();
+                submitCatalogFilters(false);
+            });
+        });
+
+        const instantInputs = catalogFilterForm.querySelectorAll("#search, #year");
+
+        instantInputs.forEach((input) => {
+            input.addEventListener("input", () => {
+                clearTimeout(searchTimeout);
+
+                searchTimeout = setTimeout(() => {
+                    submitCatalogFilters(false);
+                }, 450);
             });
         });
     }
@@ -216,12 +288,67 @@ document.addEventListener("DOMContentLoaded", () => {
                 catalogFilterForm.reset();
             }
 
-            await loadCatalog("games.php");
+            await loadCatalog("games.php", true, true);
         });
     }
 
+    function bindCatalogPagination(scope = document) {
+        const paginationLinks = scope.querySelectorAll(".pagination-link");
+
+        paginationLinks.forEach((link) => {
+            if (link.dataset.bound === "true") return;
+
+            link.dataset.bound = "true";
+
+            link.addEventListener("click", async (event) => {
+                event.preventDefault();
+
+                await loadCatalog(link.href, false, true);
+
+                const catalogTop = document.querySelector(".catalog-results");
+
+                if (catalogTop) {
+                    catalogTop.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+                }
+            });
+        });
+    }
+
+    bindCatalogPagination();
+
     window.addEventListener("popstate", async () => {
-        await loadCatalog(window.location.href, false);
+        syncCatalogFiltersWithUrl();
+        await loadCatalog(window.location.href, false, false);
+    });
+
+    document.addEventListener("click", (event) => {
+        const link = event.target.closest(".catalog-detail-link");
+
+        if (!link) {
+            return;
+        }
+
+        sessionStorage.setItem("catalogReturnUrl", window.location.href);
+        sessionStorage.setItem("shouldRestoreCatalog", "true");
+    });
+
+    window.addEventListener("pageshow", async () => {
+        const shouldRestore = sessionStorage.getItem("shouldRestoreCatalog");
+        const savedUrl = sessionStorage.getItem("catalogReturnUrl");
+
+        if (!catalogFilterForm || !catalogContent || shouldRestore !== "true" || !savedUrl) {
+            return;
+        }
+
+        sessionStorage.removeItem("shouldRestoreCatalog");
+
+        window.history.replaceState({}, "", savedUrl);
+        syncCatalogFiltersWithUrl();
+
+        await loadCatalog(savedUrl, false, false);
     });
 
     const reviewForm = document.getElementById("reviewForm");
@@ -292,7 +419,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateAverageRating(data.average_rating, data.review_count);
                 showToast(data.message, "success");
 
-                if (reviewMessage) reviewMessage.textContent = "";
+                if (reviewMessage) {
+                    reviewMessage.textContent = "";
+                }
 
                 if (data.review_count === 0 && reviewsList) {
                     reviewsList.innerHTML = `
@@ -323,7 +452,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const formData = new FormData(reviewForm);
 
             submitButton.disabled = true;
-            if (reviewMessage) reviewMessage.textContent = "Ajout de l’avis...";
+
+            if (reviewMessage) {
+                reviewMessage.textContent = "Ajout de l’avis...";
+            }
 
             try {
                 const response = await fetch(reviewForm.action, {
@@ -377,7 +509,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 reviewForm.reset();
                 showToast(data.message, "success");
 
-                if (reviewMessage) reviewMessage.textContent = "";
+                if (reviewMessage) {
+                    reviewMessage.textContent = "";
+                }
 
             } catch (error) {
                 showToast("Erreur de connexion.", "error");
@@ -388,8 +522,44 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    const favoriteSearch = document.getElementById("favoriteSearch");
+    const favoritesGrid = document.getElementById("favoritesGrid");
+    const favoritesEmptySearch = document.getElementById("favoritesEmptySearch");
+
+    if (favoriteSearch && favoritesGrid) {
+        favoriteSearch.addEventListener("input", () => {
+            const search = favoriteSearch.value.toLowerCase().trim();
+            const cards = favoritesGrid.querySelectorAll(".favorite-card");
+            let visibleCount = 0;
+
+            cards.forEach((card) => {
+                const title = card.dataset.title || "";
+                const genre = card.dataset.genre || "";
+                const platform = card.dataset.platform || "";
+
+                const match =
+                    title.includes(search) ||
+                    genre.includes(search) ||
+                    platform.includes(search);
+
+                if (match) {
+                    card.classList.remove("hidden-favorite");
+                    visibleCount++;
+                } else {
+                    card.classList.add("hidden-favorite");
+                }
+            });
+
+            if (favoritesEmptySearch) {
+                favoritesEmptySearch.style.display = visibleCount === 0 ? "block" : "none";
+            }
+        });
+    }
+
     function bindCardMouseEffect(scope = document) {
-        scope.querySelectorAll(".game-card, .card").forEach((card) => {
+        const cards = scope.querySelectorAll(".game-card, .card");
+
+        cards.forEach((card) => {
             if (card.dataset.mouseBound === "true") return;
 
             card.dataset.mouseBound = "true";

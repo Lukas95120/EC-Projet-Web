@@ -30,9 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($title === '') {
             $error = 'Le titre est obligatoire.';
+        } elseif ($imageUrl !== '' && !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+            $error = 'Le lien de l’image est invalide.';
         } else {
             $stmt = $pdo->prepare(
-                'INSERT INTO games (title, platform, genre, release_year, publisher, global_sales, critic_score, user_score, image_url)
+                'INSERT INTO games
+                 (title, platform, genre, release_year, publisher, global_sales, critic_score, user_score, image_url)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
 
@@ -191,13 +194,17 @@ include '../includes/header.php';
                         id="image_url"
                         name="image_url"
                         placeholder="URL de l’image"
-                        value="<?= htmlspecialchars($_POST['image_url'] ?? '') ?>"
+                        value="<?= htmlspecialchars($_POST['image_url'] ?? ($ticket['image_url'] ?? '')) ?>"
                     >
                 </div>
 
                 <div id="gameImagePreview" class="game-image-preview">
-                    <?php if (!empty($_POST['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($_POST['image_url']) ?>" alt="Aperçu du jeu">
+                    <?php
+                    $previewImage = $_POST['image_url'] ?? ($ticket['image_url'] ?? '');
+                    ?>
+
+                    <?php if (!empty($previewImage)): ?>
+                        <img src="<?= htmlspecialchars($previewImage) ?>" alt="Aperçu du jeu" loading="lazy">
                     <?php endif; ?>
                 </div>
 

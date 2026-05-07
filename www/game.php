@@ -59,6 +59,8 @@ include 'includes/header.php';
                         src="<?= htmlspecialchars($game['image_url']) ?>"
                         alt="<?= htmlspecialchars($game['title']) ?>"
                         class="game-hero-image"
+                        loading="eager"
+                        fetchpriority="high"
                     >
                 <?php else: ?>
                     <div class="game-hero-placeholder">🎮</div>

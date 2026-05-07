@@ -8,6 +8,7 @@ $games = $pdo->query('SELECT * FROM games ORDER BY id DESC')->fetchAll();
 
 $totalGames = $pdo->query('SELECT COUNT(*) FROM games')->fetchColumn();
 $totalUsers = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+$totalBannedUsers = $pdo->query('SELECT COUNT(*) FROM users WHERE is_banned = 1')->fetchColumn();
 $totalReviews = $pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
 $totalFavorites = $pdo->query('SELECT COUNT(*) FROM favorites')->fetchColumn();
 
@@ -45,11 +46,12 @@ include '../includes/header.php';
         <div class="dashboard-hero info-box">
             <div>
                 <h2>Bienvenue dans l’espace admin</h2>
-                <p>Gère le catalogue, les tickets utilisateurs, les avis et les statistiques du site.</p>
+                <p>Gère le catalogue, les tickets utilisateurs, les avis, les membres et les statistiques du site.</p>
             </div>
 
             <div class="admin-actions">
                 <a href="games_create.php" class="btn">Ajouter un jeu</a>
+                <a href="users.php" class="btn btn-secondary">Membres</a>
                 <a href="tickets.php" class="btn btn-secondary">Tickets ouverts</a>
                 <a href="tickets_to_add.php" class="btn btn-secondary">Jeux à ajouter</a>
                 <a href="tickets_archived.php" class="btn btn-secondary">Archives</a>
@@ -67,6 +69,12 @@ include '../includes/header.php';
                 <span>👤</span>
                 <h3><?= htmlspecialchars($totalUsers) ?></h3>
                 <p>Utilisateurs</p>
+            </article>
+
+            <article class="stat-card">
+                <span>🚫</span>
+                <h3><?= htmlspecialchars($totalBannedUsers) ?></h3>
+                <p>Bannis</p>
             </article>
 
             <article class="stat-card">

@@ -8,7 +8,61 @@ $platform = trim($_GET['platform'] ?? '');
 $year = trim($_GET['year'] ?? '');
 $sort = $_GET['sort'] ?? 'title_asc';
 
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = 6;
+$offset = ($page - 1) * $perPage;
+
 $userId = isLoggedIn() ? $_SESSION['user']['id'] : null;
+
+function buildCatalogUrl(int $page): string
+{
+    $params = $_GET;
+    $params['page'] = $page;
+
+    return 'games.php?' . http_build_query($params);
+}
+
+/* ===== Requête de comptage ===== */
+
+$countSql = 'SELECT COUNT(DISTINCT games.id)
+             FROM games
+             LEFT JOIN reviews ON games.id = reviews.game_id
+             WHERE 1=1';
+
+$countParams = [];
+
+if ($search !== '') {
+    $countSql .= ' AND games.title LIKE ?';
+    $countParams[] = '%' . $search . '%';
+}
+
+if ($genre !== '') {
+    $countSql .= ' AND games.genre = ?';
+    $countParams[] = $genre;
+}
+
+if ($platform !== '') {
+    $countSql .= ' AND games.platform = ?';
+    $countParams[] = $platform;
+}
+
+if ($year !== '') {
+    $countSql .= ' AND games.release_year = ?';
+    $countParams[] = $year;
+}
+
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute($countParams);
+$totalFilteredGames = (int)$countStmt->fetchColumn();
+
+$totalPages = max(1, (int)ceil($totalFilteredGames / $perPage));
+
+if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+}
+
+/* ===== Requête principale ===== */
 
 $sql = 'SELECT games.*, 
                AVG(reviews.rating) AS avg_rating,
@@ -67,11 +121,13 @@ $allowedSorts = [
 ];
 
 $orderBy = $allowedSorts[$sort] ?? $allowedSorts['title_asc'];
-$sql .= ' ORDER BY ' . $orderBy;
+$sql .= ' ORDER BY ' . $orderBy . ' LIMIT ' . $perPage . ' OFFSET ' . $offset;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $games = $stmt->fetchAll();
+
+/* ===== Données filtres / stats ===== */
 
 $genres = $pdo->query(
     'SELECT DISTINCT genre FROM games WHERE genre IS NOT NULL AND genre != "" ORDER BY genre'
@@ -198,12 +254,16 @@ include 'includes/header.php';
             <div id="catalogContent" class="catalog-content">
                 <div class="catalog-results info-box">
                     <div>
-                        <h2><?= htmlspecialchars(count($games)) ?> résultat(s)</h2>
+                        <h2><?= htmlspecialchars($totalFilteredGames) ?> résultat(s)</h2>
 
-                        <?php if ($search || $genre || $platform || $year): ?>
-                            <p>Résultats filtrés selon ta recherche actuelle.</p>
+                        <?php if ($totalFilteredGames > 0): ?>
+                            <p>
+                                Affichage de <?= htmlspecialchars($offset + 1) ?>
+                                à <?= htmlspecialchars(min($offset + $perPage, $totalFilteredGames)) ?>
+                                sur <?= htmlspecialchars($totalFilteredGames) ?> jeu(x).
+                            </p>
                         <?php else: ?>
-                            <p>Tous les jeux du catalogue sont affichés.</p>
+                            <p>Aucun jeu ne correspond à ta recherche.</p>
                         <?php endif; ?>
                     </div>
 
@@ -228,6 +288,7 @@ include 'includes/header.php';
                                             src="<?= htmlspecialchars($game['image_url']) ?>"
                                             alt="<?= htmlspecialchars($game['title']) ?>"
                                             class="game-image"
+                                            loading="lazy"
                                         >
                                     <?php else: ?>
                                         <div class="game-image-placeholder">🎮</div>
@@ -299,7 +360,12 @@ include 'includes/header.php';
                                 </p>
 
                                 <div class="catalog-actions">
-                                    <a href="game.php?id=<?= $game['id'] ?>" class="btn btn-secondary">Voir détails</a>
+                                    <a
+                                        href="game.php?id=<?= $game['id'] ?>"
+                                        class="btn btn-secondary catalog-detail-link"
+                                    >
+                                        Voir détails
+                                    </a>
 
                                     <?php if (isLoggedIn()): ?>
                                         <form
@@ -328,6 +394,36 @@ include 'includes/header.php';
                             </article>
                         <?php endforeach; ?>
                     </div>
+
+                    <?php if ($totalPages > 1): ?>
+                        <nav class="catalog-pagination">
+                            <?php if ($page > 1): ?>
+                                <a href="<?= htmlspecialchars(buildCatalogUrl($page - 1)) ?>" class="pagination-link">
+                                    ← Précédent
+                                </a>
+                            <?php endif; ?>
+
+                            <?php
+                            $startPage = max(1, $page - 2);
+                            $endPage = min($totalPages, $page + 2);
+                            ?>
+
+                            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                <a
+                                    href="<?= htmlspecialchars(buildCatalogUrl($i)) ?>"
+                                    class="pagination-link <?= $i === $page ? 'pagination-active' : '' ?>"
+                                >
+                                    <?= htmlspecialchars($i) ?>
+                                </a>
+                            <?php endfor; ?>
+
+                            <?php if ($page < $totalPages): ?>
+                                <a href="<?= htmlspecialchars(buildCatalogUrl($page + 1)) ?>" class="pagination-link">
+                                    Suivant →
+                                </a>
+                            <?php endif; ?>
+                        </nav>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

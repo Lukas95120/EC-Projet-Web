@@ -1,5 +1,4 @@
 <?php
-
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
 
@@ -33,31 +32,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isPasswordValid = true;
             }
 
-            if ($isPasswordValid) {
+            if ($isPasswordValid && (int)($user['is_banned'] ?? 0) === 1) {
+                $error = 'Ton compte a été suspendu.';
+            } elseif ($isPasswordValid) {
                 $newHash = password_hash($password, PASSWORD_DEFAULT);
 
                 $update = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
                 $update->execute([$newHash, $user['id']]);
+
+                $_SESSION['user'] = [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'email' => $user['email'],
+                    'role' => $user['role']
+                ];
+
+                if ($user['role'] === 'admin') {
+                    header('Location: admin/dashboard.php');
+                } else {
+                    header('Location: index.php');
+                }
+
+                exit;
             }
         }
 
-        if ($user && $isPasswordValid) {
-            $_SESSION['user'] = [
-                'id' => $user['id'],
-                'username' => $user['username'],
-                'email' => $user['email'],
-                'role' => $user['role']
-            ];
-
-            if ($user['role'] === 'admin') {
-                header('Location: admin/dashboard.php');
-            } else {
-                header('Location: index.php');
-            }
-            exit;
+        if ($error === '') {
+            $error = 'Email ou mot de passe incorrect.';
         }
-
-        $error = 'Email ou mot de passe incorrect.';
     }
 }
 

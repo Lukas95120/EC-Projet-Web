@@ -173,6 +173,7 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                                 src="<?= htmlspecialchars($game['image_url']) ?>"
                                 alt="<?= htmlspecialchars($game['title']) ?>"
                                 class="game-image"
+                                loading="lazy"
                             >
                         <?php else: ?>
                             <div class="game-image-placeholder">🎮</div>
@@ -227,6 +228,7 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                                 src="<?= htmlspecialchars($game['image_url']) ?>"
                                 alt="<?= htmlspecialchars($game['title']) ?>"
                                 class="game-image"
+                                loading="lazy"
                             >
                         <?php else: ?>
                             <div class="game-image-placeholder">🎮</div>
