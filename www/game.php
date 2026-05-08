@@ -14,7 +14,7 @@ if (!$game) {
 }
 
 $stmt = $pdo->prepare(
-    'SELECT reviews.*, users.username
+    'SELECT reviews.*, users.username, users.avatar
      FROM reviews
      INNER JOIN users ON reviews.user_id = users.id
      WHERE reviews.game_id = ?
@@ -160,7 +160,22 @@ include 'includes/header.php';
                     <?php else: ?>
                         <?php foreach ($reviews as $review): ?>
                             <article class="card review-card" data-review-id="<?= $review['id'] ?>">
-                                <h3><?= htmlspecialchars($review['username']) ?></h3>
+                                <div class="review-user-header">
+                                    <a href="user.php?id=<?= htmlspecialchars($review['user_id']) ?>" class="mini-user-link">
+                                        <span class="mini-user-avatar">
+                                            <?php if (!empty($review['avatar'])): ?>
+                                                <img
+                                                    src="assets/uploads/<?= htmlspecialchars(basename($review['avatar'])) ?>"
+                                                    alt="<?= htmlspecialchars($review['username']) ?>"
+                                                >
+                                            <?php else: ?>
+                                                <?= htmlspecialchars(strtoupper(substr($review['username'], 0, 1))) ?>
+                                            <?php endif; ?>
+                                        </span>
+
+                                        <strong><?= htmlspecialchars($review['username']) ?></strong>
+                                    </a>
+                                </div>
 
                                 <div class="review-stars">
                                     <?php for ($i = 1; $i <= 5; $i++): ?>

@@ -1,6 +1,8 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/content_filter.php';
+require_once 'includes/moderation.php';
 
 requireLogin();
 
@@ -25,8 +27,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = trim($_POST['message'] ?? '');
         $userId = $_SESSION['user']['id'];
 
+        $titleContentError = validateUserContent($title);
+        $messageContentError = $message !== '' ? validateUserContent($message) : null;
+
         if ($title === '') {
             $error = 'Le titre du jeu est obligatoire.';
+        } elseif ($titleContentError !== null) {
+            logModerationAction($pdo, $userId, 'ticket_title', $title, $titleContentError);
+
+            $error = $titleContentError;
+            $_POST['title'] = '';
+        } elseif ($messageContentError !== null) {
+            logModerationAction($pdo, $userId, 'ticket_message', $message, $messageContentError);
+
+            $error = $messageContentError;
+            $_POST['message'] = '';
         } elseif ($releaseYear !== null && ($releaseYear < 1950 || $releaseYear > (int)date('Y') + 5)) {
             $error = 'L’année de sortie semble invalide.';
         } elseif ($imageUrl !== '' && !filter_var($imageUrl, FILTER_VALIDATE_URL)) {

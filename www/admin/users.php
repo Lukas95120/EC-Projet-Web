@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once '../includes/badges.php';
 
 requireAdmin();
 
@@ -8,10 +9,12 @@ $stmt = $pdo->query(
     'SELECT
         users.*,
         COUNT(DISTINCT reviews.id) AS review_count,
-        COUNT(DISTINCT favorites.game_id) AS favorite_count
+        COUNT(DISTINCT favorites.game_id) AS favorite_count,
+        COUNT(DISTINCT tickets.id) AS ticket_count
      FROM users
      LEFT JOIN reviews ON users.id = reviews.user_id
      LEFT JOIN favorites ON users.id = favorites.user_id
+     LEFT JOIN tickets ON users.id = tickets.user_id
      GROUP BY users.id
      ORDER BY users.created_at DESC'
 );
@@ -38,6 +41,7 @@ include '../includes/header.php';
         <div class="admin-users-grid">
 
             <?php foreach ($users as $user): ?>
+                <?php $userBadges = getUserBadges($user); ?>
 
                 <article class="info-box admin-user-card">
 
@@ -66,7 +70,11 @@ include '../includes/header.php';
                         </div>
 
                         <div>
-                            <h2><?= htmlspecialchars($user['username']) ?></h2>
+                            <h2>
+                                <a href="../user.php?id=<?= htmlspecialchars($user['id']) ?>">
+                                    <?= htmlspecialchars($user['username']) ?>
+                                </a>
+                            </h2>
 
                             <p><?= htmlspecialchars($user['email']) ?></p>
 
@@ -81,6 +89,15 @@ include '../includes/header.php';
                                     Compte banni
                                 </span>
                             <?php endif; ?>
+
+                            <div class="user-badges">
+                                <?php foreach ($userBadges as $badge): ?>
+                                    <span class="user-badge <?= htmlspecialchars($badge['class']) ?>">
+                                        <?= htmlspecialchars($badge['icon']) ?>
+                                        <?= htmlspecialchars($badge['label']) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
 
                     </div>
@@ -95,6 +112,11 @@ include '../includes/header.php';
                         <div>
                             <strong><?= htmlspecialchars($user['favorite_count']) ?></strong>
                             <span>favoris</span>
+                        </div>
+
+                        <div>
+                            <strong><?= htmlspecialchars($user['ticket_count']) ?></strong>
+                            <span>tickets</span>
                         </div>
 
                         <div>

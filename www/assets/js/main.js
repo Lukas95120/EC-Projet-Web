@@ -19,6 +19,15 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => toast.remove(), 3100);
     }
 
+    function clearInappropriateFields(form) {
+        const commentInput = form.querySelector("#comment, textarea[name='comment'], textarea");
+
+        if (commentInput) {
+            commentInput.value = "";
+            commentInput.textContent = "";
+        }
+    }
+
     const menuToggle = document.getElementById("menuToggle");
     const mainNav = document.getElementById("mainNav");
 
@@ -82,7 +91,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (!data.success) {
                         showToast(data.message || "Une erreur est survenue.", "error");
-                        if (message) message.textContent = "";
+
+                        if (message) {
+                            message.textContent = "";
+                        }
+
                         button.disabled = false;
                         return;
                     }
@@ -146,7 +159,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 } catch (error) {
                     showToast("Erreur de connexion.", "error");
-                    if (message) message.textContent = "";
+
+                    if (message) {
+                        message.textContent = "";
+                    }
                 }
 
                 button.disabled = false;
@@ -256,7 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
             loadCatalog(url, showToastAfterSearch, true);
         }
 
-        catalogFilterForm.addEventListener("submit", async (event) => {
+        catalogFilterForm.addEventListener("submit", (event) => {
             event.preventDefault();
             submitCatalogFilters(true);
         });
@@ -327,9 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", (event) => {
         const link = event.target.closest(".catalog-detail-link");
 
-        if (!link) {
-            return;
-        }
+        if (!link) return;
 
         sessionStorage.setItem("catalogReturnUrl", window.location.href);
         sessionStorage.setItem("shouldRestoreCatalog", "true");
@@ -467,10 +481,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const data = await response.json();
+                const errorMessage = data.message || "Une erreur est survenue.";
 
                 if (!data.success) {
-                    showToast(data.message || "Une erreur est survenue.", "error");
-                    if (reviewMessage) reviewMessage.textContent = "";
+                    if (data.clear_content || errorMessage.toLowerCase().includes("inapproprié")) {
+                        clearInappropriateFields(reviewForm);
+                    }
+
+                    showToast(errorMessage, "error");
+
+                    if (reviewMessage) {
+                        reviewMessage.textContent = "";
+                    }
+
                     submitButton.disabled = false;
                     return;
                 }
@@ -487,8 +510,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 article.className = "card review-card";
                 article.dataset.reviewId = review.id;
 
+                const avatarHtml = review.avatar
+                    ? `<img src="assets/uploads/${review.avatar.split("/").pop()}" alt="${review.username}">`
+                    : review.username.charAt(0).toUpperCase();
+
                 article.innerHTML = `
-                    <h3>${review.username}</h3>
+                    <div class="review-user-header">
+                        <a href="user.php?id=${review.user_id}" class="mini-user-link">
+                            <span class="mini-user-avatar">
+                                ${avatarHtml}
+                            </span>
+
+                            <strong>${review.username}</strong>
+                        </a>
+                    </div>
+
                     <div class="review-stars">${review.stars}</div>
                     <p>Note : ${review.rating}/5</p>
                     ${review.comment ? `<p>${review.comment}</p>` : ""}
@@ -515,7 +551,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             } catch (error) {
                 showToast("Erreur de connexion.", "error");
-                if (reviewMessage) reviewMessage.textContent = "";
+
+                if (reviewMessage) {
+                    reviewMessage.textContent = "";
+                }
             }
 
             submitButton.disabled = false;
@@ -576,4 +615,190 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     bindCardMouseEffect();
+
+    const forumMessagesList = document.getElementById("forumMessagesList");
+
+    function createForumMessageHtml(message) {
+        const avatarHtml = message.avatar
+            ? `<img src="assets/uploads/${message.avatar.split("/").pop()}" alt="${message.username}">`
+            : message.username.charAt(0).toUpperCase();
+
+        return `
+            <article class="forum-message" data-message-id="${message.id}">
+                <div class="forum-message-header forum-user-header">
+                    <a href="user.php?id=${message.user_id}" class="mini-user-link">
+                        <span class="mini-user-avatar">
+                            ${avatarHtml}
+                        </span>
+
+                        <strong>${message.username}</strong>
+                    </a>
+
+                    <span>${message.created_at}</span>
+                </div>
+
+                <p>${message.message}</p>
+            </article>
+        `;
+    }
+
+    async function refreshForumMessages() {
+        if (!forumMessagesList) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`forum_fetch.php?t=${Date.now()}`, {
+                cache: "no-store",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                return;
+            }
+
+            if (data.messages.length === 0) {
+                forumMessagesList.innerHTML = `
+                    <div class="info-box">
+                        <h2>Aucun message</h2>
+                        <p>Sois le premier à lancer la discussion.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            forumMessagesList.innerHTML = data.messages
+                .map((message) => createForumMessageHtml(message))
+                .join("");
+
+            bindCardMouseEffect(forumMessagesList);
+
+        } catch (error) {
+            console.error("Erreur lors du rafraîchissement du forum :", error);
+        }
+    }
+
+    if (forumMessagesList) {
+        setInterval(refreshForumMessages, 5000);
+    }
+
+        function createReviewHtml(review, currentUserId = null) {
+        const avatarHtml = review.avatar
+            ? `<img src="assets/uploads/${review.avatar.split("/").pop()}" alt="${review.username}">`
+            : review.username.charAt(0).toUpperCase();
+
+        const csrfInput = reviewForm
+            ? reviewForm.querySelector("[name='csrf_token']")
+            : null;
+
+        const gameIdInput = reviewForm
+            ? reviewForm.querySelector("[name='game_id']")
+            : null;
+
+        const canDelete = currentUserId && Number(currentUserId) === Number(review.user_id);
+
+        const deleteFormHtml = canDelete && csrfInput && gameIdInput
+            ? `
+                <form action="delete_review.php" method="POST" class="delete-review-form">
+                    <input type="hidden" name="csrf_token" value="${csrfInput.value}">
+                    <input type="hidden" name="review_id" value="${review.id}">
+                    <input type="hidden" name="game_id" value="${gameIdInput.value}">
+                    <button class="btn btn-danger" type="submit">Supprimer mon avis</button>
+                </form>
+            `
+            : "";
+
+        return `
+            <article class="card review-card" data-review-id="${review.id}">
+                <div class="review-user-header">
+                    <a href="user.php?id=${review.user_id}" class="mini-user-link">
+                        <span class="mini-user-avatar">
+                            ${avatarHtml}
+                        </span>
+
+                        <strong>${review.username}</strong>
+                    </a>
+                </div>
+
+                <div class="review-stars">${review.stars}</div>
+                <p>Note : ${review.rating}/5</p>
+                ${review.comment ? `<p>${review.comment}</p>` : ""}
+                ${deleteFormHtml}
+            </article>
+        `;
+    }
+
+    function getCurrentUserId() {
+        const metaUser = document.querySelector("meta[name='current-user-id']");
+
+        if (metaUser) {
+            return metaUser.content;
+        }
+
+        return null;
+    }
+
+    async function refreshReviews() {
+        if (!reviewsList) {
+            return;
+        }
+
+        const gameIdInput = document.querySelector("[name='game_id']");
+
+        if (!gameIdInput) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`reviews_fetch.php?game_id=${gameIdInput.value}&t=${Date.now()}`, {
+                cache: "no-store",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                return;
+            }
+
+            updateAverageRating(data.average_rating, data.review_count);
+
+            if (data.reviews.length === 0) {
+                reviewsList.innerHTML = `
+                    <article class="card" id="noReviewsMessage">
+                        <h3>Aucun avis pour le moment</h3>
+                        <p>Sois le premier à laisser une note et un commentaire.</p>
+                    </article>
+                `;
+                return;
+            }
+
+            const currentUserId = getCurrentUserId();
+
+            reviewsList.innerHTML = data.reviews
+                .map((review) => createReviewHtml(review, currentUserId))
+                .join("");
+
+            document.querySelectorAll(".delete-review-form").forEach((form) => {
+                bindDeleteReviewForm(form);
+            });
+
+            bindCardMouseEffect(reviewsList);
+
+        } catch (error) {
+            console.error("Erreur lors du rafraîchissement des avis :", error);
+        }
+    }
+
+    if (reviewsList) {
+        refreshReviews();
+        setInterval(refreshReviews, 5000);
+    }
+
 });

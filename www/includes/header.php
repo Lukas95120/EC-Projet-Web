@@ -12,6 +12,14 @@ $flash = getFlash();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GameStats</title>
+
+    <?php if (isLoggedIn()): ?>
+        <meta
+            name="current-user-id"
+            content="<?= htmlspecialchars($_SESSION['user']['id']) ?>"
+        >
+    <?php endif; ?>
+
     <link rel="stylesheet" href="<?= htmlspecialchars($basePath) ?>assets/css/style.css">
 </head>
 <body>

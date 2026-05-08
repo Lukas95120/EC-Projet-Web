@@ -2240,3 +2240,104 @@ body:has(.home-screen) .site-footer {
     display: flex;
     justify-content: flex-end;
 }
+
+/* BADGES UTILISATEURS */
+
+.user-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+}
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: fit-content;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 900;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.08);
+    color: white;
+}
+
+.badge-user {
+    background: rgba(59,130,246,0.16);
+    border-color: rgba(59,130,246,0.35);
+    color: #bfdbfe;
+}
+
+.badge-veteran {
+    background: rgba(234,179,8,0.16);
+    border-color: rgba(234,179,8,0.4);
+    color: #fef08a;
+}
+
+.badge-reviewer {
+    background: rgba(139,92,246,0.18);
+    border-color: rgba(139,92,246,0.4);
+    color: #ddd6fe;
+}
+
+.badge-expert {
+    background: rgba(249,115,22,0.16);
+    border-color: rgba(249,115,22,0.4);
+    color: #fed7aa;
+}
+
+.badge-collector {
+    background: rgba(244,63,94,0.16);
+    border-color: rgba(244,63,94,0.4);
+    color: #fecdd3;
+}
+
+.badge-contributor {
+    background: rgba(34,197,94,0.16);
+    border-color: rgba(34,197,94,0.4);
+    color: #bbf7d0;
+}
+
+/* MINI PROFILS DANS AVIS / FORUM */
+
+.mini-user-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: fit-content;
+}
+
+.mini-user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    font-weight: 900;
+    border: 2px solid rgba(255,255,255,0.18);
+    box-shadow: 0 10px 25px rgba(139,92,246,0.25);
+}
+
+.mini-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.review-user-header {
+    margin-bottom: 0.6rem;
+}
+
+.forum-user-header {
+    align-items: center;
+}
+
+.mini-user-link:hover strong {
+    color: #c4b5fd;
+}

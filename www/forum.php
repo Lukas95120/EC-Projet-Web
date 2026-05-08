@@ -1,6 +1,8 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/content_filter.php';
+require_once 'includes/moderation.php';
 
 requireLogin();
 
@@ -14,11 +16,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $message = trim($_POST['message'] ?? '');
         $userId = $_SESSION['user']['id'];
+        $contentError = $message !== '' ? validateUserContent($message) : null;
 
         if ($message === '') {
             $error = 'Le message ne peut pas être vide.';
-        } elseif (strlen($message) > 1000) {
+        } elseif (mb_strlen($message, 'UTF-8') > 1000) {
             $error = 'Le message ne doit pas dépasser 1000 caractères.';
+        } elseif ($contentError !== null) {
+            logModerationAction($pdo, $userId, 'forum_message', $message, $contentError);
+
+            $error = $contentError;
+            $_POST['message'] = '';
         } else {
             $stmt = $pdo->prepare(
                 'INSERT INTO forum_messages (user_id, message)
@@ -33,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = $pdo->query(
-    'SELECT forum_messages.*, users.username
+    'SELECT forum_messages.*, users.username, users.avatar
      FROM forum_messages
      INNER JOIN users ON forum_messages.user_id = users.id
      ORDER BY forum_messages.created_at DESC'
@@ -71,7 +79,7 @@ include 'includes/header.php';
             </form>
         </div>
 
-        <div class="forum-list">
+        <div class="forum-list" id="forumMessagesList">
             <?php if (empty($messages)): ?>
                 <div class="info-box">
                     <h2>Aucun message</h2>
@@ -80,8 +88,22 @@ include 'includes/header.php';
             <?php else: ?>
                 <?php foreach ($messages as $message): ?>
                     <article class="forum-message">
-                        <div class="forum-message-header">
-                            <strong><?= htmlspecialchars($message['username']) ?></strong>
+                        <div class="forum-message-header forum-user-header">
+                            <a href="user.php?id=<?= htmlspecialchars($message['user_id']) ?>" class="mini-user-link">
+                                <span class="mini-user-avatar">
+                                    <?php if (!empty($message['avatar'])): ?>
+                                        <img
+                                            src="assets/uploads/<?= htmlspecialchars(basename($message['avatar'])) ?>"
+                                            alt="<?= htmlspecialchars($message['username']) ?>"
+                                        >
+                                    <?php else: ?>
+                                        <?= htmlspecialchars(strtoupper(substr($message['username'], 0, 1))) ?>
+                                    <?php endif; ?>
+                                </span>
+
+                                <strong><?= htmlspecialchars($message['username']) ?></strong>
+                            </a>
+
                             <span><?= htmlspecialchars($message['created_at']) ?></span>
                         </div>
 

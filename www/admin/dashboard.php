@@ -11,6 +11,7 @@ $totalUsers = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $totalBannedUsers = $pdo->query('SELECT COUNT(*) FROM users WHERE is_banned = 1')->fetchColumn();
 $totalReviews = $pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
 $totalFavorites = $pdo->query('SELECT COUNT(*) FROM favorites')->fetchColumn();
+$totalModerationLogs = $pdo->query('SELECT COUNT(*) FROM moderation_logs')->fetchColumn();
 
 $totalTickets = $pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
 $pendingTickets = $pdo->query("SELECT COUNT(*) FROM tickets WHERE status = 'pending'")->fetchColumn();
@@ -46,12 +47,15 @@ include '../includes/header.php';
         <div class="dashboard-hero info-box">
             <div>
                 <h2>Bienvenue dans l’espace admin</h2>
-                <p>Gère le catalogue, les tickets utilisateurs, les avis, les membres et les statistiques du site.</p>
+                <p>Gère le catalogue, les tickets utilisateurs, les avis, les membres, la modération et les statistiques du site.</p>
             </div>
 
             <div class="admin-actions">
                 <a href="games_create.php" class="btn">Ajouter un jeu</a>
                 <a href="users.php" class="btn btn-secondary">Membres</a>
+                <a href="reviews.php" class="btn btn-secondary">Avis</a>
+                <a href="forum_messages.php" class="btn btn-secondary">Messages forum</a>
+                <a href="moderation_logs.php" class="btn btn-secondary">Logs modération</a>
                 <a href="tickets.php" class="btn btn-secondary">Tickets ouverts</a>
                 <a href="tickets_to_add.php" class="btn btn-secondary">Jeux à ajouter</a>
                 <a href="tickets_archived.php" class="btn btn-secondary">Archives</a>
@@ -75,6 +79,12 @@ include '../includes/header.php';
                 <span>🚫</span>
                 <h3><?= htmlspecialchars($totalBannedUsers) ?></h3>
                 <p>Bannis</p>
+            </article>
+
+            <article class="stat-card">
+                <span>🛡️</span>
+                <h3><?= htmlspecialchars($totalModerationLogs) ?></h3>
+                <p>Logs modération</p>
             </article>
 
             <article class="stat-card">
@@ -139,7 +149,9 @@ include '../includes/header.php';
                             <li>
                                 <strong><?= htmlspecialchars($ticket['title']) ?></strong>
                                 <span>
-                                    <?= htmlspecialchars($ticket['username']) ?> ·
+                                    <a href="../user.php?id=<?= htmlspecialchars($ticket['user_id']) ?>">
+                                        <?= htmlspecialchars($ticket['username']) ?>
+                                    </a> ·
                                     <?= htmlspecialchars($ticket['status']) ?>
                                     <?= (int)$ticket['added_to_catalog'] === 1 ? ' · ajouté au catalogue' : '' ?>
                                 </span>
@@ -162,12 +174,16 @@ include '../includes/header.php';
                             <li>
                                 <strong><?= htmlspecialchars($review['title']) ?></strong>
                                 <span>
-                                    <?= htmlspecialchars($review['username']) ?> ·
+                                    <a href="../user.php?id=<?= htmlspecialchars($review['user_id']) ?>">
+                                        <?= htmlspecialchars($review['username']) ?>
+                                    </a> ·
                                     <?= htmlspecialchars($review['rating']) ?>/5
                                 </span>
                             </li>
                         <?php endforeach; ?>
                     </ul>
+
+                    <a href="reviews.php" class="btn">Gérer les avis</a>
                 <?php endif; ?>
             </article>
         </div>

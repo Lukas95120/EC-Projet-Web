@@ -1,6 +1,8 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/content_filter.php';
+require_once 'includes/moderation.php';
 
 requireLogin();
 
@@ -33,6 +35,12 @@ $comment = trim($_POST['comment'] ?? '');
 $userId = $_SESSION['user']['id'];
 $username = $_SESSION['user']['username'] ?? 'Utilisateur';
 
+$stmt = $pdo->prepare('SELECT avatar FROM users WHERE id = ?');
+$stmt->execute([$userId]);
+$currentUser = $stmt->fetch();
+
+$userAvatar = $currentUser['avatar'] ?? null;
+
 if ($gameId <= 0 || $rating < 1 || $rating > 5) {
     if ($isAjax) {
         jsonResponse(false, 'Avis invalide.');
@@ -40,6 +48,22 @@ if ($gameId <= 0 || $rating < 1 || $rating > 5) {
 
     setFlash('error', 'Avis invalide.');
     header('Location: games.php');
+    exit;
+}
+
+$contentError = $comment !== '' ? validateUserContent($comment) : null;
+
+if ($contentError !== null) {
+    logModerationAction($pdo, $userId, 'review', $comment, $contentError);
+
+    if ($isAjax) {
+        jsonResponse(false, $contentError, [
+            'clear_content' => true
+        ]);
+    }
+
+    setFlash('error', $contentError);
+    header('Location: game.php?id=' . $gameId);
     exit;
 }
 
@@ -97,7 +121,9 @@ if ($isAjax) {
     jsonResponse(true, 'Avis ajouté avec succès.', [
         'review' => [
             'id' => $reviewId,
+            'user_id' => $userId,
             'username' => $username,
+            'avatar' => $userAvatar,
             'rating' => $rating,
             'comment' => nl2br(htmlspecialchars($comment)),
             'stars' => str_repeat('⭐', $rating) . str_repeat('☆', 5 - $rating)

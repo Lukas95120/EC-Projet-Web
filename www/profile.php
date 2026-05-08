@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/badges.php';
 
 requireLogin();
 
@@ -81,10 +82,21 @@ $stmt = $pdo->prepare('SELECT COUNT(*) FROM reviews WHERE user_id = ?');
 $stmt->execute([$userId]);
 $reviewCount = (int)$stmt->fetchColumn();
 
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets WHERE user_id = ?');
+$stmt->execute([$userId]);
+$ticketCount = (int)$stmt->fetchColumn();
+
 $stmt = $pdo->prepare('SELECT AVG(rating) FROM reviews WHERE user_id = ?');
 $stmt->execute([$userId]);
 $averageGivenRating = $stmt->fetchColumn();
 $averageGivenRating = $averageGivenRating ? round($averageGivenRating, 1) : null;
+
+$userForBadges = $user;
+$userForBadges['review_count'] = $reviewCount;
+$userForBadges['favorite_count'] = $favoriteCount;
+$userForBadges['ticket_count'] = $ticketCount;
+
+$userBadges = getUserBadges($userForBadges);
 
 $stmt = $pdo->prepare(
     'SELECT games.*
@@ -133,12 +145,21 @@ include 'includes/header.php';
                     >
                 <?php else: ?>
                     <div class="avatar-placeholder">
-                        <?= strtoupper(substr($user['username'], 0, 1)) ?>
+                        <?= htmlspecialchars(strtoupper(substr($user['username'], 0, 1))) ?>
                     </div>
                 <?php endif; ?>
 
                 <h2><?= htmlspecialchars($user['username']) ?></h2>
                 <p>Membre GameStats</p>
+
+                <div class="user-badges">
+                    <?php foreach ($userBadges as $badge): ?>
+                        <span class="user-badge <?= htmlspecialchars($badge['class']) ?>">
+                            <?= htmlspecialchars($badge['icon']) ?>
+                            <?= htmlspecialchars($badge['label']) ?>
+                        </span>
+                    <?php endforeach; ?>
+                </div>
 
                 <div class="profile-bio-preview">
                     <h3>Bio</h3>
@@ -207,6 +228,12 @@ include 'includes/header.php';
             </article>
 
             <article class="stat-card">
+                <span>🎫</span>
+                <h3><?= htmlspecialchars($ticketCount) ?></h3>
+                <p>Tickets créés</p>
+            </article>
+
+            <article class="stat-card">
                 <span>🎯</span>
                 <h3><?= $averageGivenRating !== null ? htmlspecialchars($averageGivenRating) : '—' ?></h3>
                 <p>Note moyenne donnée</p>
@@ -261,7 +288,8 @@ include 'includes/header.php';
             <article class="info-box">
                 <h2>Activité</h2>
                 <p>
-                    Continue à noter des jeux et à ajouter tes favoris pour enrichir ton profil GameStats.
+                    Continue à noter des jeux, créer des tickets et ajouter tes favoris
+                    pour débloquer davantage de badges GameStats.
                 </p>
                 <a href="games.php" class="btn btn-secondary">Retour au catalogue</a>
             </article>
