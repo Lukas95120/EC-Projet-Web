@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once '../includes/notifications.php';
 
 requireAdmin();
 
@@ -27,7 +28,21 @@ if ($id <= 0 || !in_array($status, $allowedStatuses, true)) {
     exit;
 }
 
-$addedToCatalog = $status === 'accepted' ? 0 : 0;
+$stmt = $pdo->prepare(
+    'SELECT user_id, title
+     FROM tickets
+     WHERE id = ?'
+);
+$stmt->execute([$id]);
+$ticket = $stmt->fetch();
+
+if (!$ticket) {
+    setFlash('error', 'Ticket introuvable.');
+    header('Location: tickets.php');
+    exit;
+}
+
+$addedToCatalog = 0;
 
 $stmt = $pdo->prepare(
     'UPDATE tickets
@@ -37,12 +52,30 @@ $stmt = $pdo->prepare(
 $stmt->execute([$status, $addedToCatalog, $id]);
 
 if ($status === 'accepted') {
+    createNotification(
+        $pdo,
+        (int)$ticket['user_id'],
+        'ticket',
+        'Ticket accepté',
+        'Ton ticket pour le jeu "' . $ticket['title'] . '" a été accepté.',
+        'tickets.php'
+    );
+
     setFlash('success', 'Ticket accepté. Il est maintenant dans les jeux à ajouter.');
     header('Location: tickets_to_add.php');
     exit;
 }
 
 if ($status === 'rejected') {
+    createNotification(
+        $pdo,
+        (int)$ticket['user_id'],
+        'ticket',
+        'Ticket refusé',
+        'Ton ticket pour le jeu "' . $ticket['title'] . '" a été refusé.',
+        'tickets.php'
+    );
+
     setFlash('success', 'Ticket refusé et archivé.');
     header('Location: tickets_archived.php');
     exit;

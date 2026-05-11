@@ -16,6 +16,7 @@ if (!verifyCsrfToken($_POST['csrf_token'] ?? null)) {
 }
 
 $reviewId = (int)($_POST['review_id'] ?? 0);
+$deleteReason = trim($_POST['delete_reason'] ?? '');
 
 if ($reviewId <= 0) {
     setFlash('error', 'Avis invalide.');
@@ -23,9 +24,47 @@ if ($reviewId <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare('DELETE FROM reviews WHERE id = ?');
+if ($deleteReason === '') {
+    setFlash('error', 'La raison de suppression est obligatoire.');
+    header('Location: reviews.php');
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'SELECT user_id
+     FROM reviews
+     WHERE id = ?'
+);
 $stmt->execute([$reviewId]);
 
+$review = $stmt->fetch();
+
+if (!$review) {
+    setFlash('error', 'Avis introuvable.');
+    header('Location: reviews.php');
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'DELETE FROM reviews
+     WHERE id = ?'
+);
+$stmt->execute([$reviewId]);
+
+$stmt = $pdo->prepare(
+    'INSERT INTO notifications
+     (user_id, type, title, message)
+     VALUES (?, ?, ?, ?)'
+);
+
+$stmt->execute([
+    $review['user_id'],
+    'Modération',
+    'Avis supprimé',
+    'Un administrateur a supprimé ton avis. Raison : ' . $deleteReason
+]);
+
 setFlash('success', 'Avis supprimé avec succès.');
+
 header('Location: reviews.php');
 exit;

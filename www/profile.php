@@ -58,7 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($error === '') {
                 $stmt = $pdo->prepare(
-                    'UPDATE users SET username = ?, bio = ?, avatar = ? WHERE id = ?'
+                    'UPDATE users
+                     SET username = ?, bio = ?, avatar = ?
+                     WHERE id = ?'
                 );
                 $stmt->execute([$username, $bio, $avatarName, $userId]);
 
@@ -97,6 +99,7 @@ $userForBadges['favorite_count'] = $favoriteCount;
 $userForBadges['ticket_count'] = $ticketCount;
 
 $userBadges = getUserBadges($userForBadges);
+syncUserBadges($pdo, $userId, $userBadges);
 
 $stmt = $pdo->prepare(
     'SELECT games.*

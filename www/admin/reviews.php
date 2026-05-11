@@ -75,9 +75,16 @@ include '../includes/header.php';
                             <td><?= htmlspecialchars($review['created_at']) ?></td>
 
                             <td>
-                                <form action="review_delete.php" method="POST">
+                                <form action="review_delete.php" method="POST" class="admin-delete-confirm-form">
                                     <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                                     <input type="hidden" name="review_id" value="<?= htmlspecialchars($review['id']) ?>">
+
+                                    <textarea
+                                        name="delete_reason"
+                                        placeholder="Raison de suppression..."
+                                        required
+                                    ></textarea>
+
                                     <button class="btn btn-danger" type="submit">Supprimer</button>
                                 </form>
                             </td>

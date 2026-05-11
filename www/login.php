@@ -11,7 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email === '' || $password === '') {
         $error = 'Veuillez remplir tous les champs.';
     } else {
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
+        $stmt = $pdo->prepare(
+            'SELECT *
+             FROM users
+             WHERE email = ?
+             LIMIT 1'
+        );
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
@@ -32,19 +37,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isPasswordValid = true;
             }
 
-            if ($isPasswordValid && (int)($user['is_banned'] ?? 0) === 1) {
-                $error = 'Ton compte a été suspendu.';
-            } elseif ($isPasswordValid) {
-                $newHash = password_hash($password, PASSWORD_DEFAULT);
+            if ($isPasswordValid && (int)($user['is_banned'] ?? 0) === 1 && $user['role'] !== 'admin') {
+                $banReason = trim($user['ban_reason'] ?? '');
 
-                $update = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
-                $update->execute([$newHash, $user['id']]);
+                if ($banReason === '') {
+                    $banReason = 'Aucune raison précisée.';
+                }
+
+                $error = 'Ton compte a été suspendu. Raison : ' . $banReason;
+            } elseif ($isPasswordValid) {
+                if (!password_verify($password, $storedPassword)) {
+                    $newHash = password_hash($password, PASSWORD_DEFAULT);
+
+                    $update = $pdo->prepare(
+                        'UPDATE users
+                         SET password = ?
+                         WHERE id = ?'
+                    );
+                    $update->execute([$newHash, $user['id']]);
+                }
 
                 $_SESSION['user'] = [
                     'id' => $user['id'],
                     'username' => $user['username'],
                     'email' => $user['email'],
-                    'role' => $user['role']
+                    'role' => $user['role'],
+                    'is_banned' => $user['is_banned'],
+                    'ban_reason' => $user['ban_reason']
                 ];
 
                 if ($user['role'] === 'admin') {

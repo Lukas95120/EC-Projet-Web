@@ -10,6 +10,7 @@ CREATE TABLE users (
     bio TEXT,
     role ENUM('user', 'admin') DEFAULT 'user',
     is_banned TINYINT(1) DEFAULT 0,
+    ban_reason VARCHAR(255) DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -83,5 +84,27 @@ CREATE TABLE moderation_logs (
     reason VARCHAR(255) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(255),
+    is_read TINYINT(1) DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE user_badges (
+    user_id INT NOT NULL,
+    badge_key VARCHAR(50) NOT NULL,
+    unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (user_id, badge_key),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

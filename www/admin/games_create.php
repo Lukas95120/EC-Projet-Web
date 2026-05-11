@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once '../includes/notifications.php';
 
 requireAdmin();
 
@@ -51,6 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imageUrl
             ]);
 
+            $gameId = (int)$pdo->lastInsertId();
+
             if ($ticketId > 0) {
                 $stmt = $pdo->prepare(
                     'UPDATE tickets
@@ -58,6 +61,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      WHERE id = ?'
                 );
                 $stmt->execute([$ticketId]);
+
+                if ($ticket && !empty($ticket['user_id'])) {
+                    createNotification(
+                        $pdo,
+                        (int)$ticket['user_id'],
+                        'catalogue',
+                        'Jeu ajouté au catalogue',
+                        'Le jeu "' . $title . '" que tu as demandé a été ajouté au catalogue.',
+                        'game.php?id=' . $gameId
+                    );
+                }
             }
 
             setFlash('success', 'Jeu ajouté avec succès.');
@@ -90,7 +104,7 @@ include '../includes/header.php';
                 <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
 
                 <?php if ($ticketId > 0): ?>
-                    <input type="hidden" name="ticket_id" value="<?= $ticketId ?>">
+                    <input type="hidden" name="ticket_id" value="<?= htmlspecialchars($ticketId) ?>">
                 <?php endif; ?>
 
                 <div class="form-group">
@@ -199,9 +213,7 @@ include '../includes/header.php';
                 </div>
 
                 <div id="gameImagePreview" class="game-image-preview">
-                    <?php
-                    $previewImage = $_POST['image_url'] ?? ($ticket['image_url'] ?? '');
-                    ?>
+                    <?php $previewImage = $_POST['image_url'] ?? ($ticket['image_url'] ?? ''); ?>
 
                     <?php if (!empty($previewImage)): ?>
                         <img src="<?= htmlspecialchars($previewImage) ?>" alt="Aperçu du jeu" loading="lazy">

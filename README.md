@@ -95,3 +95,49 @@ cp config.example.php config.php
 ```
 
 Modifier config.php avec vos informations :
+
+```php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'gamestats');
+define('DB_USER', 'your_db_user');
+define('DB_PASS', 'your_db_password');
+
+define('RAWG_API_KEY', 'your_rawg_api_key');
+```
+
+### 4. Lancer le projet
+
+- Placer le projet dans votre serveur local (XAMPP, WAMP, etc.)
+- Accéder via :
+        http://localhost/gamestats
+
+---
+
+### 📊 État du projet
+
+Le projet est actuellement fonctionnel avec toutes les fonctionnalités principales implémentées :
+
+- Catalogue complet
+- Système utilisateurs
+- Favoris et avis
+- Système de tickets avancé
+- Intégration API RAWG
+
+⚠️ Certaines fonctionnalités sont encore en phase de test et pourront être améliorées ou optimisées (UX, performances, interactions dynamiques).
+
+---
+
+### 🔮 Améliorations prévues
+
+- Actions sans rechargement (AJAX)
+- Amélioration de l’expérience utilisateur (UX)
+- Suggestions de jeux similaires
+- Import automatique de jeux populaires
+- Ajout de trailers et médias
+- Statistiques avancées dans l’admin
+
+---
+
+### 👨‍💻 Auteur
+
+Projet réalisé dans le cadre d’un apprentissage du développement web.

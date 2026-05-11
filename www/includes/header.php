@@ -1,9 +1,19 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/notifications.php';
 
 $isAdminPage = strpos($_SERVER['PHP_SELF'], '/admin/') !== false;
 $basePath = $isAdminPage ? '../' : '';
 $flash = getFlash();
+
+$unreadNotificationsCount = 0;
+
+if (isLoggedIn()) {
+    $unreadNotificationsCount = getUnreadNotificationsCount(
+        $pdo,
+        $_SESSION['user']['id']
+    );
+}
 ?>
 
 <!DOCTYPE html>
@@ -41,6 +51,15 @@ $flash = getFlash();
                 <a href="<?= htmlspecialchars($basePath) ?>tickets.php">Tickets</a>
                 <a href="<?= htmlspecialchars($basePath) ?>forum.php">Forum</a>
                 <a href="<?= htmlspecialchars($basePath) ?>profile.php">Profil</a>
+
+                <a href="<?= htmlspecialchars($basePath) ?>notifications.php">
+                    Notifications
+                    <?php if ($unreadNotificationsCount > 0): ?>
+                        <span class="nav-badge" id="notificationsBadge">
+                            <?= htmlspecialchars($unreadNotificationsCount) ?>
+                        </span>
+                    <?php endif; ?>
+                </a>
             <?php endif; ?>
 
             <?php if (isAdmin()): ?>

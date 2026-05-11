@@ -3,6 +3,8 @@ require_once 'includes/db.php';
 require_once 'includes/auth.php';
 require_once 'includes/content_filter.php';
 require_once 'includes/moderation.php';
+require_once 'includes/badges_sync.php';
+require_once 'includes/notifications.php';
 
 requireLogin();
 
@@ -26,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sourceUrl = trim($_POST['source_url'] ?? '');
         $message = trim($_POST['message'] ?? '');
         $userId = $_SESSION['user']['id'];
+        $username = $_SESSION['user']['username'] ?? 'Un utilisateur';
 
         $titleContentError = validateUserContent($title);
         $messageContentError = $message !== '' ? validateUserContent($message) : null;
@@ -82,6 +85,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sourceUrl,
                     $message
                 ]);
+
+                $ticketId = (int)$pdo->lastInsertId();
+
+                syncCurrentUserBadges($pdo, $userId);
+
+                $stmt = $pdo->query(
+                    'SELECT id
+                     FROM users
+                     WHERE role = "admin"'
+                );
+                $admins = $stmt->fetchAll();
+
+                foreach ($admins as $admin) {
+                    createNotification(
+                        $pdo,
+                        (int)$admin['id'],
+                        'ticket',
+                        'Nouveau ticket utilisateur',
+                        $username . ' a demandé l’ajout du jeu "' . $title . '".',
+                        'admin/tickets.php'
+                    );
+                }
 
                 $success = 'Demande envoyée avec succès.';
                 $_POST = [];

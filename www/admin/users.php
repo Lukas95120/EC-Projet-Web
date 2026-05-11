@@ -88,6 +88,13 @@ include '../includes/header.php';
                                 <span class="status-badge status-rejected">
                                     Compte banni
                                 </span>
+
+                                <p class="ban-reason-display">
+                                    <strong>Raison :</strong>
+                                    <?= !empty($user['ban_reason'])
+                                        ? htmlspecialchars($user['ban_reason'])
+                                        : 'Aucune raison précisée.' ?>
+                                </p>
                             <?php endif; ?>
 
                             <div class="user-badges">
@@ -133,7 +140,7 @@ include '../includes/header.php';
 
                         <?php if ((int)$user['is_banned'] === 1): ?>
 
-                            <form action="unban_user.php" method="POST">
+                            <form action="unban_user.php" method="POST" class="admin-user-status-confirm-form">
 
                                 <input
                                     type="hidden"
@@ -155,7 +162,7 @@ include '../includes/header.php';
 
                         <?php else: ?>
 
-                            <form action="ban_user.php" method="POST">
+                            <form action="ban_user.php" method="POST" class="admin-user-status-confirm-form">
 
                                 <input
                                     type="hidden"
@@ -167,6 +174,14 @@ include '../includes/header.php';
                                     type="hidden"
                                     name="user_id"
                                     value="<?= htmlspecialchars($user['id']) ?>"
+                                >
+
+                                <input
+                                    type="text"
+                                    name="ban_reason"
+                                    placeholder="Raison du bannissement"
+                                    class="ban-reason-input"
+                                    required
                                 >
 
                                 <button class="btn btn-danger" type="submit">

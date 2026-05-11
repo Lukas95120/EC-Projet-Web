@@ -18,6 +18,7 @@ function getUserBadges(array $user): array
     }
 
     $badges[] = [
+        'key' => 'member',
         'label' => 'Membre',
         'icon' => '👤',
         'class' => 'badge-user'
@@ -25,6 +26,7 @@ function getUserBadges(array $user): array
 
     if ($accountAgeDays >= 30) {
         $badges[] = [
+            'key' => 'veteran',
             'label' => 'Ancien membre',
             'icon' => '⏳',
             'class' => 'badge-veteran'
@@ -33,6 +35,7 @@ function getUserBadges(array $user): array
 
     if ($reviewCount >= 1) {
         $badges[] = [
+            'key' => 'reviewer_beginner',
             'label' => 'Critique débutant',
             'icon' => '⭐',
             'class' => 'badge-reviewer'
@@ -41,6 +44,7 @@ function getUserBadges(array $user): array
 
     if ($reviewCount >= 5) {
         $badges[] = [
+            'key' => 'reviewer_active',
             'label' => 'Critique actif',
             'icon' => '🏆',
             'class' => 'badge-expert'
@@ -49,6 +53,7 @@ function getUserBadges(array $user): array
 
     if ($favoriteCount >= 5) {
         $badges[] = [
+            'key' => 'collector',
             'label' => 'Collectionneur',
             'icon' => '❤️',
             'class' => 'badge-collector'
@@ -57,6 +62,7 @@ function getUserBadges(array $user): array
 
     if ($ticketCount >= 1) {
         $badges[] = [
+            'key' => 'contributor',
             'label' => 'Contributeur',
             'icon' => '🎫',
             'class' => 'badge-contributor'
@@ -64,4 +70,42 @@ function getUserBadges(array $user): array
     }
 
     return $badges;
+}
+
+function syncUserBadges(PDO $pdo, int $userId, array $badges): void
+{
+    require_once __DIR__ . '/notifications.php';
+
+    foreach ($badges as $badge) {
+        if (empty($badge['key'])) {
+            continue;
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT 1
+             FROM user_badges
+             WHERE user_id = ?
+             AND badge_key = ?'
+        );
+        $stmt->execute([$userId, $badge['key']]);
+
+        if ($stmt->fetch()) {
+            continue;
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO user_badges (user_id, badge_key)
+             VALUES (?, ?)'
+        );
+        $stmt->execute([$userId, $badge['key']]);
+
+        createNotification(
+            $pdo,
+            $userId,
+            'badge',
+            'Nouveau badge débloqué',
+            'Tu as débloqué le badge "' . $badge['label'] . '".',
+            'profile.php'
+        );
+    }
 }

@@ -16,6 +16,7 @@ if (!verifyCsrfToken($_POST['csrf_token'] ?? null)) {
 }
 
 $messageId = (int)($_POST['message_id'] ?? 0);
+$deleteReason = trim($_POST['delete_reason'] ?? '');
 
 if ($messageId <= 0) {
     setFlash('error', 'Message invalide.');
@@ -23,9 +24,47 @@ if ($messageId <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare('DELETE FROM forum_messages WHERE id = ?');
+if ($deleteReason === '') {
+    setFlash('error', 'La raison de suppression est obligatoire.');
+    header('Location: forum_messages.php');
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'SELECT user_id
+     FROM forum_messages
+     WHERE id = ?'
+);
 $stmt->execute([$messageId]);
 
+$message = $stmt->fetch();
+
+if (!$message) {
+    setFlash('error', 'Message introuvable.');
+    header('Location: forum_messages.php');
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'DELETE FROM forum_messages
+     WHERE id = ?'
+);
+$stmt->execute([$messageId]);
+
+$stmt = $pdo->prepare(
+    'INSERT INTO notifications
+     (user_id, type, title, message)
+     VALUES (?, ?, ?, ?)'
+);
+
+$stmt->execute([
+    $message['user_id'],
+    'Modération',
+    'Message supprimé',
+    'Un administrateur a supprimé ton message forum. Raison : ' . $deleteReason
+]);
+
 setFlash('success', 'Message supprimé avec succès.');
+
 header('Location: forum_messages.php');
 exit;

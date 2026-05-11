@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/badges_sync.php';
 
 requireLogin();
 
@@ -59,6 +60,8 @@ $stmt = $pdo->prepare(
      VALUES (?, ?)'
 );
 $stmt->execute([$userId, $gameId]);
+
+syncCurrentUserBadges($pdo, $userId);
 
 if ($isAjax) {
     jsonResponse(true, 'Jeu ajouté aux favoris.', [

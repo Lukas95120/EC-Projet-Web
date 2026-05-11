@@ -3,6 +3,7 @@ require_once 'includes/db.php';
 require_once 'includes/auth.php';
 require_once 'includes/content_filter.php';
 require_once 'includes/moderation.php';
+require_once 'includes/badges_sync.php';
 
 requireLogin();
 
@@ -102,6 +103,8 @@ $stmt = $pdo->prepare(
 $stmt->execute([$userId, $gameId, $rating, $comment]);
 
 $reviewId = (int)$pdo->lastInsertId();
+
+syncCurrentUserBadges($pdo, $userId);
 
 $stmt = $pdo->prepare(
     'SELECT AVG(rating) AS average_rating, COUNT(*) AS review_count
