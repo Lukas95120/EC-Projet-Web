@@ -16,6 +16,7 @@ $basePath = $isAdminPage ? '../' : '';
 <script src="<?= $basePath ?>assets/js/catalog.js"></script>
 <script src="<?= $basePath ?>assets/js/reviews.js"></script>
 <script src="<?= $basePath ?>assets/js/forum.js"></script>
+<script src="<?= $basePath ?>assets/js/community.js"></script>
 <script src="<?= $basePath ?>assets/js/notifications.js"></script>
 <script src="<?= $basePath ?>assets/js/messages.js"></script>
 <script src="<?= $basePath ?>assets/js/admin.js"></script>

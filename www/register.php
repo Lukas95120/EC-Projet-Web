@@ -4,7 +4,6 @@ require_once 'includes/auth.php';
 
 $error = '';
 $success = '';
-$verificationLink = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
@@ -22,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'SELECT id
              FROM users
              WHERE email = ?
-             OR username = ?'
+             OR username = ?
+             LIMIT 1'
         );
         $stmt->execute([$email, $username]);
 
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Cet email ou ce pseudo est déjà utilisé.';
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $token = bin2hex(random_bytes(32));
+            $verificationCode = (string)random_int(100000, 999999);
 
             $stmt = $pdo->prepare(
                 'INSERT INTO users
@@ -42,21 +42,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $username,
                 $email,
                 $hashedPassword,
-                $token
+                $verificationCode
             ]);
 
-            $verificationLink = 'http://' . $_SERVER['HTTP_HOST']
-                . dirname($_SERVER['PHP_SELF'])
-                . '/verify_email.php?token=' . urlencode($token);
+            $subject = 'Code de validation GameStats';
 
-            $subject = 'Validation de ton compte GameStats';
-            $message = "Bienvenue sur GameStats.\n\n"
-                . "Clique sur ce lien pour valider ton adresse email :\n"
-                . $verificationLink;
+            $message =
+                "Bienvenue sur GameStats.\n\n" .
+                "Voici ton code de validation : " . $verificationCode . "\n\n" .
+                "Entre ce code sur la page de vérification pour activer ton compte.\n\n" .
+                SITE_URL . "/verify_email.php?email=" . urlencode($email);
 
-            @mail($email, $subject, $message);
+            $headers = "From: GameStats <" . MAIL_FROM . ">\r\n";
+            $headers .= "Reply-To: " . MAIL_FROM . "\r\n";
+            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
-            $success = 'Compte créé. Tu dois maintenant valider ton adresse email avant de te connecter.';
+            @mail($email, $subject, $message, $headers);
+
+            header('Location: verify_email.php?email=' . urlencode($email));
+            exit;
         }
     }
 }
@@ -74,15 +78,6 @@ include 'includes/header.php';
 
         <?php if ($success): ?>
             <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-        <?php endif; ?>
-
-        <?php if ($verificationLink): ?>
-            <div class="alert alert-success">
-                <strong>Lien de test local :</strong><br>
-                <a href="<?= htmlspecialchars($verificationLink) ?>">
-                    <?= htmlspecialchars($verificationLink) ?>
-                </a>
-            </div>
         <?php endif; ?>
 
         <form action="register.php" method="POST">

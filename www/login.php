@@ -35,10 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isPasswordValid = true;
             }
 
-            if ($email === 'admin@gamestats.fr' && $password === 'admin123') {
-                $isPasswordValid = true;
-            }
-
             if (
                 $isPasswordValid
                 && (int)($user['email_verified'] ?? 0) !== 1
