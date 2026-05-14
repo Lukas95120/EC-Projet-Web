@@ -4,6 +4,7 @@ require_once 'includes/auth.php';
 
 $error = '';
 $success = '';
+$verificationLink = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
@@ -17,23 +18,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (strlen($password) < 6) {
         $error = 'Le mot de passe doit contenir au moins 6 caractères.';
     } else {
-        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? OR username = ?');
+        $stmt = $pdo->prepare(
+            'SELECT id
+             FROM users
+             WHERE email = ?
+             OR username = ?'
+        );
         $stmt->execute([$email, $username]);
-        $existingUser = $stmt->fetch();
 
-        if ($existingUser) {
+        if ($stmt->fetch()) {
             $error = 'Cet email ou ce pseudo est déjà utilisé.';
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $token = bin2hex(random_bytes(32));
 
             $stmt = $pdo->prepare(
-                'INSERT INTO users (username, email, password, role)
-                 VALUES (?, ?, ?, "user")'
+                'INSERT INTO users
+                 (username, email, password, role, email_verified, email_verification_token)
+                 VALUES (?, ?, ?, "user", 0, ?)'
             );
 
-            $stmt->execute([$username, $email, $hashedPassword]);
+            $stmt->execute([
+                $username,
+                $email,
+                $hashedPassword,
+                $token
+            ]);
 
-            $success = 'Compte créé avec succès. Tu peux maintenant te connecter.';
+            $verificationLink = 'http://' . $_SERVER['HTTP_HOST']
+                . dirname($_SERVER['PHP_SELF'])
+                . '/verify_email.php?token=' . urlencode($token);
+
+            $subject = 'Validation de ton compte GameStats';
+            $message = "Bienvenue sur GameStats.\n\n"
+                . "Clique sur ce lien pour valider ton adresse email :\n"
+                . $verificationLink;
+
+            @mail($email, $subject, $message);
+
+            $success = 'Compte créé. Tu dois maintenant valider ton adresse email avant de te connecter.';
         }
     }
 }
@@ -51,6 +74,15 @@ include 'includes/header.php';
 
         <?php if ($success): ?>
             <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+        <?php endif; ?>
+
+        <?php if ($verificationLink): ?>
+            <div class="alert alert-success">
+                <strong>Lien de test local :</strong><br>
+                <a href="<?= htmlspecialchars($verificationLink) ?>">
+                    <?= htmlspecialchars($verificationLink) ?>
+                </a>
+            </div>
         <?php endif; ?>
 
         <form action="register.php" method="POST">

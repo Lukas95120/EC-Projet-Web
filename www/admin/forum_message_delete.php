@@ -1,6 +1,8 @@
 <?php
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once '../includes/notifications.php';
+require_once '../includes/admin_moderation.php';
 
 requireAdmin();
 
@@ -35,6 +37,7 @@ $stmt = $pdo->prepare(
      FROM forum_messages
      WHERE id = ?'
 );
+
 $stmt->execute([$messageId]);
 
 $message = $stmt->fetch();
@@ -49,20 +52,26 @@ $stmt = $pdo->prepare(
     'DELETE FROM forum_messages
      WHERE id = ?'
 );
+
 $stmt->execute([$messageId]);
 
-$stmt = $pdo->prepare(
-    'INSERT INTO notifications
-     (user_id, type, title, message)
-     VALUES (?, ?, ?, ?)'
-);
-
-$stmt->execute([
+createNotification(
+    $pdo,
     $message['user_id'],
     'Modération',
     'Message supprimé',
-    'Un administrateur a supprimé ton message forum. Raison : ' . $deleteReason
-]);
+    'Un administrateur a supprimé ton message forum. Raison : ' . $deleteReason,
+    'profile.php'
+);
+
+logAdminModerationAction(
+    $pdo,
+    $_SESSION['user']['id'] ?? null,
+    (int)$message['user_id'],
+    'delete_forum_message',
+    $deleteReason,
+    'Message forum supprimé par un administrateur.'
+);
 
 setFlash('success', 'Message supprimé avec succès.');
 

@@ -13,6 +13,12 @@ $basePath = $isAdminPage ? '../' : '';
 </footer>
 
 <script src="<?= $basePath ?>assets/js/main.js"></script>
+<script src="<?= $basePath ?>assets/js/catalog.js"></script>
+<script src="<?= $basePath ?>assets/js/reviews.js"></script>
+<script src="<?= $basePath ?>assets/js/forum.js"></script>
+<script src="<?= $basePath ?>assets/js/notifications.js"></script>
+<script src="<?= $basePath ?>assets/js/messages.js"></script>
+<script src="<?= $basePath ?>assets/js/admin.js"></script>
 
 <div class="confirm-modal" id="adminDeleteModal" aria-hidden="true">
     <div class="confirm-modal-backdrop" data-close-admin-delete-modal></div>

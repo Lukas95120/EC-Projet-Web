@@ -2,6 +2,7 @@
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
 require_once '../includes/notifications.php';
+require_once '../includes/admin_moderation.php';
 
 requireAdmin();
 
@@ -11,7 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if (!verifyCsrfToken($_POST['csrf_token'] ?? null)) {
-    die('Requête invalide.');
+    setFlash('error', 'Requête invalide.');
+    header('Location: users.php');
+    exit;
 }
 
 $userId = (int)($_POST['user_id'] ?? 0);
@@ -28,6 +31,7 @@ $stmt = $pdo->prepare(
      WHERE id = ?'
 );
 $stmt->execute([$userId]);
+
 $user = $stmt->fetch();
 
 if (!$user) {
@@ -38,21 +42,32 @@ if (!$user) {
 
 $stmt = $pdo->prepare(
     'UPDATE users
-     SET is_banned = 0, ban_reason = NULL
+     SET is_banned = 0,
+         ban_reason = NULL
      WHERE id = ?'
 );
+
 $stmt->execute([$userId]);
 
 createNotification(
     $pdo,
     $userId,
-    'moderation',
+    'Modération',
     'Compte débanni',
     'Ton compte a été réactivé. Tu peux à nouveau accéder au site.',
     'profile.php'
 );
 
-setFlash('success', 'Utilisateur débanni.');
+logAdminModerationAction(
+    $pdo,
+    $_SESSION['user']['id'] ?? null,
+    $userId,
+    'unban_user',
+    null,
+    'Utilisateur débanni depuis la gestion des membres.'
+);
+
+setFlash('success', 'Utilisateur débanni avec succès.');
 
 header('Location: users.php');
 exit;

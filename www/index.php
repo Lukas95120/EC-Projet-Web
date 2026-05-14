@@ -2,16 +2,15 @@
 require_once 'includes/db.php';
 include 'includes/header.php';
 
-/* TOP ventes */
 $stmt = $pdo->query(
     'SELECT *
      FROM games
-     ORDER BY global_sales DESC
+     WHERE critic_score IS NOT NULL
+     ORDER BY critic_score DESC, id DESC
      LIMIT 3'
 );
-$topSales = $stmt->fetchAll();
+$featuredGames = $stmt->fetchAll();
 
-/* TOP 3 mieux notés par les utilisateurs */
 $stmt = $pdo->query(
     'SELECT games.*,
             AVG(reviews.rating) AS avg_rating,
@@ -25,7 +24,6 @@ $stmt = $pdo->query(
 );
 $topRatedGames = $stmt->fetchAll();
 
-/* TOP scores critiques */
 $stmt = $pdo->query(
     'SELECT *
      FROM games
@@ -35,7 +33,6 @@ $stmt = $pdo->query(
 );
 $topScores = $stmt->fetchAll();
 
-/* Derniers jeux ajoutés */
 $stmt = $pdo->query(
     'SELECT *
      FROM games
@@ -44,7 +41,6 @@ $stmt = $pdo->query(
 );
 $latestGames = $stmt->fetchAll();
 
-/* Derniers avis */
 $stmt = $pdo->query(
     'SELECT reviews.*, users.username, games.title, games.id AS game_id
      FROM reviews
@@ -55,7 +51,6 @@ $stmt = $pdo->query(
 );
 $latestReviews = $stmt->fetchAll();
 
-/* Compteurs */
 $totalGames = (int)$pdo->query('SELECT COUNT(*) FROM games')->fetchColumn();
 $totalUsers = (int)$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
@@ -104,31 +99,31 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
         <div class="home-visual">
             <div class="glow-circle"></div>
 
-            <?php if (!empty($topSales)): ?>
-                <a href="game.php?id=<?= $topSales[0]['id'] ?>" class="game-cover cover-main home-cover-image">
-                    <?php if (!empty($topSales[0]['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($topSales[0]['image_url']) ?>" alt="<?= htmlspecialchars($topSales[0]['title']) ?>">
+            <?php if (!empty($featuredGames)): ?>
+                <a href="game.php?id=<?= htmlspecialchars($featuredGames[0]['id']) ?>" class="game-cover cover-main home-cover-image">
+                    <?php if (!empty($featuredGames[0]['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($featuredGames[0]['image_url']) ?>" alt="<?= htmlspecialchars($featuredGames[0]['title']) ?>">
                     <?php endif; ?>
 
-                    <span class="cover-label">TOP VENTES</span>
-                    <h2><?= htmlspecialchars($topSales[0]['title']) ?></h2>
-                    <p><?= !empty($topSales[0]['platform']) ? htmlspecialchars($topSales[0]['platform']) : 'Plateforme inconnue' ?></p>
+                    <span class="cover-label">À DÉCOUVRIR</span>
+                    <h2><?= htmlspecialchars($featuredGames[0]['title']) ?></h2>
+                    <p><?= !empty($featuredGames[0]['platform']) ? htmlspecialchars(explode(',', $featuredGames[0]['platform'])[0]) : 'Plateforme inconnue' ?></p>
                 </a>
             <?php endif; ?>
 
-            <?php if (isset($topSales[1])): ?>
-                <a href="game.php?id=<?= $topSales[1]['id'] ?>" class="game-cover cover-left home-cover-image">
-                    <?php if (!empty($topSales[1]['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($topSales[1]['image_url']) ?>" alt="<?= htmlspecialchars($topSales[1]['title']) ?>">
+            <?php if (isset($featuredGames[1])): ?>
+                <a href="game.php?id=<?= htmlspecialchars($featuredGames[1]['id']) ?>" class="game-cover cover-left home-cover-image">
+                    <?php if (!empty($featuredGames[1]['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($featuredGames[1]['image_url']) ?>" alt="<?= htmlspecialchars($featuredGames[1]['title']) ?>">
                     <?php endif; ?>
 
-                    <span><?= !empty($topSales[1]['genre']) ? htmlspecialchars($topSales[1]['genre']) : 'Genre inconnu' ?></span>
-                    <h3><?= htmlspecialchars($topSales[1]['title']) ?></h3>
+                    <span><?= !empty($featuredGames[1]['genre']) ? htmlspecialchars(explode(',', $featuredGames[1]['genre'])[0]) : 'Genre inconnu' ?></span>
+                    <h3><?= htmlspecialchars($featuredGames[1]['title']) ?></h3>
                 </a>
             <?php endif; ?>
 
             <?php if (isset($topScores[0])): ?>
-                <a href="game.php?id=<?= $topScores[0]['id'] ?>" class="game-cover cover-right home-cover-image">
+                <a href="game.php?id=<?= htmlspecialchars($topScores[0]['id']) ?>" class="game-cover cover-right home-cover-image">
                     <?php if (!empty($topScores[0]['image_url'])): ?>
                         <img src="<?= htmlspecialchars($topScores[0]['image_url']) ?>" alt="<?= htmlspecialchars($topScores[0]['title']) ?>">
                     <?php endif; ?>
@@ -136,17 +131,15 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                     <span>⭐ <?= htmlspecialchars($topScores[0]['critic_score']) ?></span>
                     <h3><?= htmlspecialchars($topScores[0]['title']) ?></h3>
                 </a>
-            <?php endif; ?>
 
-            <?php if (isset($topScores[0])): ?>
                 <div class="floating-card floating-one">
                     ⭐ <?= htmlspecialchars($topScores[0]['critic_score']) ?>
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($topSales)): ?>
+            <?php if (!empty($featuredGames)): ?>
                 <div class="floating-card floating-two">
-                    🎮 <?= htmlspecialchars($topSales[0]['global_sales']) ?>M
+                    🎮 Jeux
                 </div>
             <?php endif; ?>
         </div>
@@ -166,7 +159,7 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
             <div class="cards-grid">
                 <?php foreach ($topRatedGames as $index => $game): ?>
                     <article class="game-card top-game-card">
-                        <span class="ranking-badge">#<?= $index + 1 ?></span>
+                        <span class="ranking-badge">#<?= htmlspecialchars($index + 1) ?></span>
 
                         <?php if (!empty($game['image_url'])): ?>
                             <img
@@ -192,17 +185,10 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                             sur <?= htmlspecialchars($game['review_count']) ?> avis
                         </p>
 
-                        <span class="badge"><?= !empty($game['genre']) ? htmlspecialchars($game['genre']) : 'Genre inconnu' ?></span>
-                        <span class="badge"><?= !empty($game['platform']) ? htmlspecialchars($game['platform']) : 'Plateforme inconnue' ?></span>
+                        <span class="badge"><?= !empty($game['genre']) ? htmlspecialchars(explode(',', $game['genre'])[0]) : 'Genre inconnu' ?></span>
+                        <span class="badge"><?= !empty($game['platform']) ? htmlspecialchars(explode(',', $game['platform'])[0]) : 'Plateforme inconnue' ?></span>
 
-                        <p>
-                            Ventes :
-                            <?= $game['global_sales'] !== null && $game['global_sales'] !== ''
-                                ? htmlspecialchars($game['global_sales']) . ' M'
-                                : 'Non renseignées' ?>
-                        </p>
-
-                        <a href="game.php?id=<?= $game['id'] ?>" class="btn">Voir détails</a>
+                        <a href="game.php?id=<?= htmlspecialchars($game['id']) ?>" class="btn">Voir détails</a>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -236,8 +222,8 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
 
                         <h2 class="game-title"><?= htmlspecialchars($game['title']) ?></h2>
 
-                        <span class="badge"><?= !empty($game['genre']) ? htmlspecialchars($game['genre']) : 'Genre inconnu' ?></span>
-                        <span class="badge"><?= !empty($game['platform']) ? htmlspecialchars($game['platform']) : 'Plateforme inconnue' ?></span>
+                        <span class="badge"><?= !empty($game['genre']) ? htmlspecialchars(explode(',', $game['genre'])[0]) : 'Genre inconnu' ?></span>
+                        <span class="badge"><?= !empty($game['platform']) ? htmlspecialchars(explode(',', $game['platform'])[0]) : 'Plateforme inconnue' ?></span>
 
                         <p>
                             Année :
@@ -246,7 +232,7 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                                 : 'Non renseignée' ?>
                         </p>
 
-                        <a href="game.php?id=<?= $game['id'] ?>" class="btn">Voir détails</a>
+                        <a href="game.php?id=<?= htmlspecialchars($game['id']) ?>" class="btn">Voir détails</a>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -284,7 +270,7 @@ $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
                             <p><?= nl2br(htmlspecialchars($review['comment'])) ?></p>
                         <?php endif; ?>
 
-                        <a href="game.php?id=<?= $review['game_id'] ?>" class="btn btn-secondary">Voir le jeu</a>
+                        <a href="game.php?id=<?= htmlspecialchars($review['game_id']) ?>" class="btn btn-secondary">Voir le jeu</a>
                     </article>
                 <?php endforeach; ?>
             </div>

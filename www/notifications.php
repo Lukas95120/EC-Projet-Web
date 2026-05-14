@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/notifications.php';
 
 requireLogin();
 
@@ -78,8 +79,11 @@ include 'includes/header.php';
                         class="info-box notification-card"
                         data-notification-id="<?= htmlspecialchars($notification['id']) ?>"
                     >
-                        <span class="eyebrow">
-                            <?= htmlspecialchars($notification['type']) ?>
+                        <?php $notificationMeta = getNotificationMeta($notification['type']); ?>
+
+                        <span class="notification-type-badge <?= htmlspecialchars($notificationMeta['class']) ?>">
+                            <?= htmlspecialchars($notificationMeta['icon']) ?>
+                            <?= htmlspecialchars($notificationMeta['label']) ?>
                         </span>
 
                         <?php if ((int)$notification['is_read'] === 0): ?>

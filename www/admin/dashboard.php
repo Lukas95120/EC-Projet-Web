@@ -12,6 +12,7 @@ $totalBannedUsers = $pdo->query('SELECT COUNT(*) FROM users WHERE is_banned = 1'
 $totalReviews = $pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
 $totalFavorites = $pdo->query('SELECT COUNT(*) FROM favorites')->fetchColumn();
 $totalModerationLogs = $pdo->query('SELECT COUNT(*) FROM moderation_logs')->fetchColumn();
+$totalAdminModerationLogs = $pdo->query('SELECT COUNT(*) FROM admin_moderation_logs')->fetchColumn();
 
 $totalTickets = $pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
 $pendingTickets = $pdo->query("SELECT COUNT(*) FROM tickets WHERE status = 'pending'")->fetchColumn();
@@ -52,10 +53,15 @@ include '../includes/header.php';
 
             <div class="admin-actions">
                 <a href="games_create.php" class="btn">Ajouter un jeu</a>
+                <a href="import_games.php" class="btn btn-secondary">Importer RAWG</a>
+                <a href="import_popular_games.php" class="btn btn-secondary">
+                    Import massif
+                </a>
                 <a href="users.php" class="btn btn-secondary">Membres</a>
                 <a href="reviews.php" class="btn btn-secondary">Avis</a>
                 <a href="forum_messages.php" class="btn btn-secondary">Messages forum</a>
                 <a href="moderation_logs.php" class="btn btn-secondary">Logs modération</a>
+                <a href="moderation_history.php" class="btn btn-secondary">Historique modération</a>
                 <a href="tickets.php" class="btn btn-secondary">Tickets ouverts</a>
                 <a href="tickets_to_add.php" class="btn btn-secondary">Jeux à ajouter</a>
                 <a href="tickets_archived.php" class="btn btn-secondary">Archives</a>
@@ -85,6 +91,12 @@ include '../includes/header.php';
                 <span>🛡️</span>
                 <h3><?= htmlspecialchars($totalModerationLogs) ?></h3>
                 <p>Logs modération</p>
+            </article>
+
+            <article class="stat-card">
+                <span>📜</span>
+                <h3><?= htmlspecialchars($totalAdminModerationLogs) ?></h3>
+                <p>Actions admin</p>
             </article>
 
             <article class="stat-card">
@@ -213,7 +225,14 @@ include '../includes/header.php';
                             <td><?= htmlspecialchars($game['publisher']) ?></td>
                             <td class="admin-actions">
                                 <a href="games_edit.php?id=<?= $game['id'] ?>" class="btn btn-secondary">Modifier</a>
-                                <a href="games_delete.php?id=<?= $game['id'] ?>" class="btn btn-danger">Supprimer</a>
+                                <form action="games_delete.php" method="POST" class="admin-delete-confirm-form">
+                                    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                    <input type="hidden" name="game_id" value="<?= htmlspecialchars($game['id']) ?>">
+
+                                    <button class="btn btn-danger" type="submit">
+                                        Supprimer
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>

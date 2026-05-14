@@ -19,6 +19,60 @@ if (!$user) {
     exit;
 }
 
+$currentUserId = isLoggedIn() ? (int)$_SESSION['user']['id'] : 0;
+$isOwnProfile = $currentUserId === (int)$user['id'];
+
+$friendshipStatus = null;
+$friendRequest = null;
+
+if (isLoggedIn() && !$isOwnProfile) {
+    $stmt = $pdo->prepare(
+        'SELECT id
+         FROM friendships
+         WHERE user_id = ?
+         AND friend_id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$currentUserId, $userId]);
+
+    if ($stmt->fetch()) {
+        $friendshipStatus = 'friends';
+    } else {
+        $stmt = $pdo->prepare(
+            'SELECT *
+             FROM friend_requests
+             WHERE (
+                sender_id = ?
+                AND receiver_id = ?
+             )
+             OR (
+                sender_id = ?
+                AND receiver_id = ?
+             )
+             ORDER BY created_at DESC
+             LIMIT 1'
+        );
+        $stmt->execute([
+            $currentUserId,
+            $userId,
+            $userId,
+            $currentUserId
+        ]);
+
+        $friendRequest = $stmt->fetch();
+
+        if ($friendRequest) {
+            if ($friendRequest['status'] === 'pending') {
+                $friendshipStatus = (int)$friendRequest['sender_id'] === $currentUserId
+                    ? 'request_sent'
+                    : 'request_received';
+            } elseif ($friendRequest['status'] === 'rejected') {
+                $friendshipStatus = 'rejected';
+            }
+        }
+    }
+}
+
 $stmt = $pdo->prepare('SELECT COUNT(*) FROM favorites WHERE user_id = ?');
 $stmt->execute([$userId]);
 $favoriteCount = (int)$stmt->fetchColumn();
@@ -115,8 +169,42 @@ include 'includes/header.php';
                     par ce membre de la communauté GameStats.
                 </p>
 
-                <?php if (isLoggedIn() && $_SESSION['user']['id'] === $user['id']): ?>
+                <?php if ($isOwnProfile): ?>
                     <a href="profile.php" class="btn">Modifier mon profil</a>
+                <?php elseif (isLoggedIn()): ?>
+
+                    <?php if ($friendshipStatus === 'friends'): ?>
+                        <span class="status-badge status-added">Déjà amis</span>
+                        <a href="messages.php?user_id=<?= htmlspecialchars($user['id']) ?>" class="btn">
+                            Envoyer un message
+                        </a>
+
+                    <?php elseif ($friendshipStatus === 'request_sent'): ?>
+                        <span class="status-badge status-pending">Demande envoyée</span>
+
+                    <?php elseif ($friendshipStatus === 'request_received' && $friendRequest): ?>
+                        <form action="friend_request_accept.php" method="POST" style="display:inline-block;">
+                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                            <input type="hidden" name="request_id" value="<?= htmlspecialchars($friendRequest['id']) ?>">
+                            <button class="btn" type="submit">Accepter</button>
+                        </form>
+
+                        <form action="friend_request_reject.php" method="POST" style="display:inline-block;">
+                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                            <input type="hidden" name="request_id" value="<?= htmlspecialchars($friendRequest['id']) ?>">
+                            <button class="btn btn-secondary" type="submit">Refuser</button>
+                        </form>
+
+                    <?php else: ?>
+                        <form action="friend_request_send.php" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                            <input type="hidden" name="receiver_id" value="<?= htmlspecialchars($user['id']) ?>">
+                            <button class="btn" type="submit">Ajouter en ami</button>
+                        </form>
+                    <?php endif; ?>
+
+                <?php else: ?>
+                    <a href="login.php" class="btn">Connecte-toi pour ajouter ce membre</a>
                 <?php endif; ?>
             </div>
         </div>

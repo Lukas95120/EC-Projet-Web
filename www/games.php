@@ -12,7 +12,7 @@ $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 6;
 $offset = ($page - 1) * $perPage;
 
-$userId = isLoggedIn() ? $_SESSION['user']['id'] : null;
+$userId = isLoggedIn() ? (int)$_SESSION['user']['id'] : null;
 
 function buildCatalogUrl(int $page): string
 {
@@ -22,7 +22,27 @@ function buildCatalogUrl(int $page): string
     return 'games.php?' . http_build_query($params);
 }
 
-/* ===== Requête de comptage ===== */
+function splitCatalogValues(array $rows, string $key): array
+{
+    $values = [];
+
+    foreach ($rows as $row) {
+        $parts = explode(',', $row[$key] ?? '');
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+
+            if ($part !== '') {
+                $values[] = $part;
+            }
+        }
+    }
+
+    $values = array_unique($values);
+    sort($values, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $values;
+}
 
 $countSql = 'SELECT COUNT(DISTINCT games.id)
              FROM games
@@ -37,13 +57,13 @@ if ($search !== '') {
 }
 
 if ($genre !== '') {
-    $countSql .= ' AND games.genre = ?';
-    $countParams[] = $genre;
+    $countSql .= ' AND games.genre LIKE ?';
+    $countParams[] = '%' . $genre . '%';
 }
 
 if ($platform !== '') {
-    $countSql .= ' AND games.platform = ?';
-    $countParams[] = $platform;
+    $countSql .= ' AND games.platform LIKE ?';
+    $countParams[] = '%' . $platform . '%';
 }
 
 if ($year !== '') {
@@ -53,8 +73,8 @@ if ($year !== '') {
 
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($countParams);
-$totalFilteredGames = (int)$countStmt->fetchColumn();
 
+$totalFilteredGames = (int)$countStmt->fetchColumn();
 $totalPages = max(1, (int)ceil($totalFilteredGames / $perPage));
 
 if ($page > $totalPages) {
@@ -62,9 +82,7 @@ if ($page > $totalPages) {
     $offset = ($page - 1) * $perPage;
 }
 
-/* ===== Requête principale ===== */
-
-$sql = 'SELECT games.*, 
+$sql = 'SELECT games.*,
                AVG(reviews.rating) AS avg_rating,
                COUNT(reviews.id) AS review_count';
 
@@ -76,8 +94,8 @@ $sql .= ' FROM games
           LEFT JOIN reviews ON games.id = reviews.game_id';
 
 if ($userId) {
-    $sql .= ' LEFT JOIN favorites 
-              ON games.id = favorites.game_id 
+    $sql .= ' LEFT JOIN favorites
+              ON games.id = favorites.game_id
               AND favorites.user_id = ?';
 }
 
@@ -95,13 +113,13 @@ if ($search !== '') {
 }
 
 if ($genre !== '') {
-    $sql .= ' AND games.genre = ?';
-    $params[] = $genre;
+    $sql .= ' AND games.genre LIKE ?';
+    $params[] = '%' . $genre . '%';
 }
 
 if ($platform !== '') {
-    $sql .= ' AND games.platform = ?';
-    $params[] = $platform;
+    $sql .= ' AND games.platform LIKE ?';
+    $params[] = '%' . $platform . '%';
 }
 
 if ($year !== '') {
@@ -113,7 +131,6 @@ $sql .= ' GROUP BY games.id';
 
 $allowedSorts = [
     'title_asc' => 'games.title ASC',
-    'sales_desc' => 'games.global_sales DESC',
     'score_desc' => 'games.critic_score DESC',
     'rating_desc' => 'avg_rating DESC',
     'year_desc' => 'games.release_year DESC',
@@ -121,21 +138,23 @@ $allowedSorts = [
 ];
 
 $orderBy = $allowedSorts[$sort] ?? $allowedSorts['title_asc'];
-$sql .= ' ORDER BY ' . $orderBy . ' LIMIT ' . $perPage . ' OFFSET ' . $offset;
+
+$sql .= ' ORDER BY ' . $orderBy . ' LIMIT ' . (int)$perPage . ' OFFSET ' . (int)$offset;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $games = $stmt->fetchAll();
 
-/* ===== Données filtres / stats ===== */
-
-$genres = $pdo->query(
-    'SELECT DISTINCT genre FROM games WHERE genre IS NOT NULL AND genre != "" ORDER BY genre'
+$genreRows = $pdo->query(
+    'SELECT genre FROM games WHERE genre IS NOT NULL AND genre != ""'
 )->fetchAll();
 
-$platforms = $pdo->query(
-    'SELECT DISTINCT platform FROM games WHERE platform IS NOT NULL AND platform != "" ORDER BY platform'
+$platformRows = $pdo->query(
+    'SELECT platform FROM games WHERE platform IS NOT NULL AND platform != ""'
 )->fetchAll();
+
+$genres = splitCatalogValues($genreRows, 'genre');
+$platforms = splitCatalogValues($platformRows, 'platform');
 
 $totalGames = (int)$pdo->query('SELECT COUNT(*) FROM games')->fetchColumn();
 $totalReviews = (int)$pdo->query('SELECT COUNT(*) FROM reviews')->fetchColumn();
@@ -197,12 +216,13 @@ include 'includes/header.php';
                         <label for="genre">Genre</label>
                         <select id="genre" name="genre">
                             <option value="">Tous les genres</option>
+
                             <?php foreach ($genres as $g): ?>
                                 <option
-                                    value="<?= htmlspecialchars($g['genre']) ?>"
-                                    <?= $genre === $g['genre'] ? 'selected' : '' ?>
+                                    value="<?= htmlspecialchars($g) ?>"
+                                    <?= $genre === $g ? 'selected' : '' ?>
                                 >
-                                    <?= htmlspecialchars($g['genre']) ?>
+                                    <?= htmlspecialchars($g) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -212,12 +232,13 @@ include 'includes/header.php';
                         <label for="platform">Plateforme</label>
                         <select id="platform" name="platform">
                             <option value="">Toutes les plateformes</option>
+
                             <?php foreach ($platforms as $p): ?>
                                 <option
-                                    value="<?= htmlspecialchars($p['platform']) ?>"
-                                    <?= $platform === $p['platform'] ? 'selected' : '' ?>
+                                    value="<?= htmlspecialchars($p) ?>"
+                                    <?= $platform === $p ? 'selected' : '' ?>
                                 >
-                                    <?= htmlspecialchars($p['platform']) ?>
+                                    <?= htmlspecialchars($p) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -238,7 +259,6 @@ include 'includes/header.php';
                         <label for="sort">Trier par</label>
                         <select id="sort" name="sort">
                             <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>Titre A-Z</option>
-                            <option value="sales_desc" <?= $sort === 'sales_desc' ? 'selected' : '' ?>>Meilleures ventes</option>
                             <option value="score_desc" <?= $sort === 'score_desc' ? 'selected' : '' ?>>Meilleur score critique</option>
                             <option value="rating_desc" <?= $sort === 'rating_desc' ? 'selected' : '' ?>>Meilleures notes utilisateurs</option>
                             <option value="year_desc" <?= $sort === 'year_desc' ? 'selected' : '' ?>>Année récente</option>
@@ -281,7 +301,7 @@ include 'includes/header.php';
                         <?php foreach ($games as $game): ?>
                             <?php $isFavorite = $userId && !empty($game['is_favorite']); ?>
 
-                            <article class="game-card catalog-card" data-game-id="<?= $game['id'] ?>">
+                            <article class="game-card catalog-card" data-game-id="<?= htmlspecialchars($game['id']) ?>">
                                 <div class="catalog-image-wrap">
                                     <?php if (!empty($game['image_url'])): ?>
                                         <img
@@ -303,11 +323,11 @@ include 'includes/header.php';
 
                                 <div class="catalog-card-meta">
                                     <span class="badge">
-                                        <?= !empty($game['genre']) ? htmlspecialchars($game['genre']) : 'Genre inconnu' ?>
+                                        <?= !empty($game['genre']) ? htmlspecialchars(explode(',', $game['genre'])[0]) : 'Genre inconnu' ?>
                                     </span>
 
                                     <span class="badge">
-                                        <?= !empty($game['platform']) ? htmlspecialchars($game['platform']) : 'Plateforme inconnue' ?>
+                                        <?= !empty($game['platform']) ? htmlspecialchars(explode(',', $game['platform'])[0]) : 'Plateforme inconnue' ?>
                                     </span>
                                 </div>
 
@@ -352,16 +372,9 @@ include 'includes/header.php';
                                     <p>Aucune note utilisateur</p>
                                 <?php endif; ?>
 
-                                <p>
-                                    Ventes mondiales :
-                                    <?= $game['global_sales'] !== null && $game['global_sales'] !== ''
-                                        ? htmlspecialchars($game['global_sales']) . ' M'
-                                        : 'Non renseignées' ?>
-                                </p>
-
                                 <div class="catalog-actions">
                                     <a
-                                        href="game.php?id=<?= $game['id'] ?>"
+                                        href="game.php?id=<?= htmlspecialchars($game['id']) ?>"
                                         class="btn btn-secondary catalog-detail-link"
                                     >
                                         Voir détails
@@ -376,7 +389,7 @@ include 'includes/header.php';
                                             data-remove-action="remove_favorite.php"
                                         >
                                             <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-                                            <input type="hidden" name="game_id" value="<?= $game['id'] ?>">
+                                            <input type="hidden" name="game_id" value="<?= htmlspecialchars($game['id']) ?>">
                                             <input type="hidden" name="return" value="games.php">
 
                                             <button

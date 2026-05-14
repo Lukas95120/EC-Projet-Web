@@ -1,6 +1,8 @@
 <?php
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once '../includes/notifications.php';
+require_once '../includes/admin_moderation.php';
 
 requireAdmin();
 
@@ -31,10 +33,12 @@ if ($deleteReason === '') {
 }
 
 $stmt = $pdo->prepare(
-    'SELECT user_id
+    'SELECT reviews.user_id, games.title AS game_title
      FROM reviews
-     WHERE id = ?'
+     LEFT JOIN games ON reviews.game_id = games.id
+     WHERE reviews.id = ?'
 );
+
 $stmt->execute([$reviewId]);
 
 $review = $stmt->fetch();
@@ -49,20 +53,26 @@ $stmt = $pdo->prepare(
     'DELETE FROM reviews
      WHERE id = ?'
 );
+
 $stmt->execute([$reviewId]);
 
-$stmt = $pdo->prepare(
-    'INSERT INTO notifications
-     (user_id, type, title, message)
-     VALUES (?, ?, ?, ?)'
-);
-
-$stmt->execute([
+createNotification(
+    $pdo,
     $review['user_id'],
     'Modération',
     'Avis supprimé',
-    'Un administrateur a supprimé ton avis. Raison : ' . $deleteReason
-]);
+    'Un administrateur a supprimé ton avis. Raison : ' . $deleteReason,
+    'profile.php'
+);
+
+logAdminModerationAction(
+    $pdo,
+    $_SESSION['user']['id'] ?? null,
+    (int)$review['user_id'],
+    'delete_review',
+    $deleteReason,
+    'Avis supprimé sur le jeu : ' . ($review['game_title'] ?? 'Jeu inconnu')
+);
 
 setFlash('success', 'Avis supprimé avec succès.');
 

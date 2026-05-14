@@ -17,7 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              WHERE email = ?
              LIMIT 1'
         );
+
         $stmt->execute([$email]);
+
         $user = $stmt->fetch();
 
         $isPasswordValid = false;
@@ -37,7 +39,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isPasswordValid = true;
             }
 
-            if ($isPasswordValid && (int)($user['is_banned'] ?? 0) === 1 && $user['role'] !== 'admin') {
+            if (
+                $isPasswordValid
+                && (int)($user['email_verified'] ?? 0) !== 1
+            ) {
+                $error = 'Tu dois vérifier ton adresse email avant de te connecter.';
+            }
+
+            elseif (
+                $isPasswordValid
+                && (int)($user['is_banned'] ?? 0) === 1
+                && $user['role'] !== 'admin'
+            ) {
                 $banReason = trim($user['ban_reason'] ?? '');
 
                 if ($banReason === '') {
@@ -45,7 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $error = 'Ton compte a été suspendu. Raison : ' . $banReason;
-            } elseif ($isPasswordValid) {
+            }
+
+            elseif ($isPasswordValid) {
+
                 if (!password_verify($password, $storedPassword)) {
                     $newHash = password_hash($password, PASSWORD_DEFAULT);
 
@@ -54,7 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          SET password = ?
                          WHERE id = ?'
                     );
-                    $update->execute([$newHash, $user['id']]);
+
+                    $update->execute([
+                        $newHash,
+                        $user['id']
+                    ]);
                 }
 
                 $_SESSION['user'] = [
@@ -63,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'email' => $user['email'],
                     'role' => $user['role'],
                     'is_banned' => $user['is_banned'],
-                    'ban_reason' => $user['ban_reason']
+                    'ban_reason' => $user['ban_reason'],
+                    'email_verified' => $user['email_verified']
                 ];
 
                 if ($user['role'] === 'admin') {
@@ -90,12 +111,16 @@ include 'includes/header.php';
         <h1>Connexion</h1>
 
         <?php if ($error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <div class="alert alert-error">
+                <?= htmlspecialchars($error) ?>
+            </div>
         <?php endif; ?>
 
         <form action="login.php" method="POST">
+
             <div class="form-group">
                 <label for="email">Adresse email</label>
+
                 <input
                     type="email"
                     id="email"
@@ -107,13 +132,25 @@ include 'includes/header.php';
 
             <div class="form-group">
                 <label for="password">Mot de passe</label>
-                <input type="password" id="password" name="password" required>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                >
             </div>
 
-            <button class="btn" type="submit">Se connecter</button>
+            <button class="btn" type="submit">
+                Se connecter
+            </button>
+
         </form>
 
-        <p>Pas encore de compte ? <a href="register.php">Créer un compte</a></p>
+        <p>
+            Pas encore de compte ?
+            <a href="register.php">Créer un compte</a>
+        </p>
     </div>
 </section>
 
